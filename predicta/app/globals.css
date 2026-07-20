@@ -16,8 +16,7 @@
   --color-danger: #ef4444;
   --color-danger-light: #fdeded;
 
-  --font-family-sans: "Plus Jakarta Sans", "system-ui", sans-serif;
-
+  --font-family-sans: var(--font-plus-jakarta-sans), "system-ui", sans-serif;
   --font-size-dashboard-title: 28px;
   --font-size-dashboard-title--line-height: 36px;
   --font-size-dashboard-title--font-weight: 700;
@@ -50,24 +49,16 @@
 }
 
 @layer base {
-  html,
-  body {
+  html, body {
     @apply bg-background text-text-primary antialiased;
-    font-family: "Plus Jakarta Sans", "system-ui", sans-serif;
+    font-family: var(--font-family-sans);
   }
-
   * {
     @apply border-border;
   }
 }
 
 @layer utilities {
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-
-  .scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 }
