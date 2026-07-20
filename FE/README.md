@@ -1,54 +1,36 @@
-# PREDICTA — Dashboard
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-AI-powered demand forecasting dashboard for restaurants, cafés, and bakeries. Built with React, TypeScript, Tailwind CSS, and Lucide icons, styled in an enterprise product-design language (Linear / Stripe / Vercel-inspired) with a custom orange (`#FA8112`) brand accent.
+## Getting Started
 
-## Getting started
+First, run the development server:
 
 ```bash
-npm install
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-Open the printed local URL (defaults to http://localhost:5173). The layout targets desktop only, centered around 1440–1600px, and is not optimized for tablet/mobile.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Scripts
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-- `npm run dev` — start the Vite dev server
-- `npm run build` — type-check and produce a production build in `dist/`
-- `npm run preview` — preview the production build locally
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Project structure
+## Learn More
 
-```
-src/
-  components/
-    layout/          Navbar, Sidebar
-    dashboard/        The six dashboard-specific cards
-    ui/                Reusable primitives: Card, CardHeader, StatusBadge,
-                        ProgressBar, MetricCard, NavigationItem
-  pages/
-    Dashboard.tsx      Composes the full dashboard screen
-  types/
-    index.ts           Shared TypeScript interfaces
-  data/
-    mockData.ts         Mock data conforming to the types above (swap for
-                        real API data without touching any component)
-  lib/
-    cn.ts               Tiny class-name join helper (no external dep)
-```
+To learn more about Next.js, take a look at the following resources:
 
-## Design tokens
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-Colors, type scale, radii, and shadows are defined once in `tailwind.config.js`
-(`primary`, `primary-light`, `success`, `warning`, `danger`, the `text-*`
-scale, `rounded-card`, `shadow-soft`) and consumed everywhere via Tailwind
-utility classes — no hardcoded hex values inside components.
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## Extending
+## Deploy on Vercel
 
-- Swap `src/data/mockData.ts` for a real API call (e.g. React Query) — every
-  component already receives its data via props.
-- Add new sidebar entries by pushing to the `navItems` array; icons resolve
-  by name from `lucide-react` inside `NavigationItem`.
-- New metric tiles can reuse `components/ui/MetricCard.tsx` the same way the
-  three bottom-row cards do.
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
