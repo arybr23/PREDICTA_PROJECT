@@ -16,6 +16,9 @@
     "react-dom": "19.2.4",
     "recharts": "^3.9.2"
   },
+  "overrides": {
+    "react-is": "19.2.4"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",

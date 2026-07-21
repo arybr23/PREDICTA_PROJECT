@@ -12,7 +12,7 @@ export default function ForecastPage() {
         <div className="col-span-1">
           <Card className="flex flex-col items-center text-center py-10">
             <p className="text-hero-title text-text-secondary mb-2">
-              Tomorrow&rsquo;s Forecast Details
+              Tomorrow's Forecast Details
             </p>
             <p className="text-hero-metric text-primary font-bold mb-1">
               {forecast.totalItems}
@@ -44,7 +44,7 @@ export default function ForecastPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         <FeatureInfluenceChart data={featureWeights} />
       </div>
 
