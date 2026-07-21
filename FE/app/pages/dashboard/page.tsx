@@ -8,12 +8,18 @@ import { forecast, predictedSales, requiredIngredients } from "@/data/mockData";
 export default function DashboardPage() {
   return (
     <DashboardLayout title="Dashboard">
-      <TomorrowForecastCard forecast={forecast} />
+      <div className="grid grid-cols-4 gap-6">
+        <div className="col-span-1">
+          <TomorrowForecastCard forecast={forecast} />
+        </div>
+        <div className="col-span-3">
+          <PredictedItemSalesCard items={predictedSales} />
+        </div>
+      </div>
       <div className="grid grid-cols-2 gap-6">
         <RequiredIngredientsCard ingredients={requiredIngredients} />
-        <PredictedItemSalesCard items={predictedSales} />
+        <SdgImpactCard />
       </div>
-      <SdgImpactCard />
     </DashboardLayout>
   );
 }
