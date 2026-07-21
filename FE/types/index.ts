@@ -7,12 +7,31 @@ export interface NavItem {
 
 export type IngredientStatus = "in-stock" | "restock-needed" | "out-of-stock";
 
+export type StockStatus = "shortage-risk" | "safe";
+
 export interface Ingredient {
   id: string;
   name: string;
   requiredVolume: number;
   unit: "kg" | "L" | "g" | "pcs";
   status: IngredientStatus;
+}
+
+export interface StockItem {
+  id: string;
+  name: string;
+  currentStock: number;
+  requiredVolume: number;
+  unit: "kg" | "L" | "g" | "pcs";
+  status: StockStatus;
+}
+
+export interface PurchaseSuggestion {
+  id: string;
+  itemName: string;
+  currentStock: number;
+  needed: number;
+  unit: string;
 }
 
 export interface MenuPrediction {
@@ -23,7 +42,7 @@ export interface MenuPrediction {
   maxOrders: number;
 }
 
-export interface Forecast {
+export interface ForecastSummary {
   totalItems: number;
   itemLabel: string;
   weatherCondition: string;
@@ -32,7 +51,20 @@ export interface Forecast {
   dayLabel: string;
 }
 
-export interface MetricCard {
+export interface FeatureWeight {
+  feature: string;
+  weight: number;
+  description: string;
+}
+
+export interface ForecastMetric {
+  label: string;
+  value: string;
+  change: string;
+  trend: "up" | "down";
+}
+
+export interface MetricCardData {
   id: string;
   title: string;
   value: string;
@@ -43,4 +75,48 @@ export interface MetricCard {
 export interface BusinessProfile {
   name: string;
   avatarUrl?: string;
+}
+
+export interface DailyComparison {
+  day: number;
+  label: string;
+  predicted: number;
+  actual: number;
+}
+
+export interface StoreInfo {
+  label: string;
+  value: string;
+}
+
+export interface DbDiagnostic {
+  metric: string;
+  value: string;
+  status: "healthy" | "warning" | "error";
+}
+
+export interface RecipeIngredient {
+  name: string;
+  amount: number;
+  unit: string;
+}
+
+export interface RecipeItem {
+  menuItem: string;
+  baseIngredients: RecipeIngredient[];
+  totalCost: string;
+}
+
+export interface PosMenuItem {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export interface SaleEntry {
+  id: string;
+  timestamp: string;
+  itemName: string;
+  quantity: number;
+  total: number;
 }

@@ -1,9 +1,9 @@
 import { Cloud } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import type { Forecast } from "@/types";
+import type { ForecastSummary } from "@/types";
 import { cn } from "@/lib/cn";
 
-export function TomorrowForecastCard({ forecast }: { forecast: Forecast }) {
+export function TomorrowForecastCard({ forecast }: { forecast: ForecastSummary }) {
   return (
     <Card className="flex flex-col items-center justify-center text-center py-14">
       <h2 className="text-hero-title text-text-secondary mb-3">
