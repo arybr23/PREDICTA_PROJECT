@@ -7,7 +7,8 @@ def build_feature_matrix(
 ):
     # 1. Check if raw data exists
     if not os.path.exists(input_path):
-        raise FileNotFoundError(f"Raw data file not found at '{input_path}'. Run generate_mock_data.py first.")
+        print(f"Raw data file not found at '{input_path}'. Run generate_mock_data.py first.")
+        return
 
     # 2. Load raw sales dataset
     df = pd.read_csv(input_path)
