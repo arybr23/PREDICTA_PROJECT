@@ -4,6 +4,7 @@ import Sidebar from "./globalComponents/Sidebar";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import DataEntry from "./pages/DataEntry/DataEntry";
 import Cashier from "./pages/Cashier/Cashier";
+import AccountProfile from "./pages/AccountProfile/AccountProfile";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/data-entry" element={<DataEntry />} />
             <Route path="/cashier" element={<Cashier />} />
+            <Route path="/account" element={<AccountProfile />} />
           </Routes>
         </main>
       </div>

@@ -78,3 +78,9 @@
 3. **Live Order Receipt Sidebar:** Itemized cart manager featuring quantity stepper controls (+ / -), auto-calculated subtotal breakdowns, and an instant order-clearing action.
 4. **Mid-Shift Stockout Quick-Flag:** Per-item alert toggle allowing cashiers to flag items as "Sold Out" instantly to record un-censored demand events in the database.
 5. **Express Checkout Action Bar:** Prominent, high-contrast primary checkout button displaying the running grand total and triggering real-time sales transactions.
+
+### Page 4: Account Profile Page
+
+1. **Profile:** On the top of the page, give vertical box containing photo profile, username and firm name in the bottom of the username (small font).
+2. **Store List:** (under the profile box) Clear list of several store that is hold by the firms, give details as closed or open currently.
+3. **Stock management:** (side by side with the store list) give list for existing ingridients in the firm's storage. Give details as amount of each ingridients.

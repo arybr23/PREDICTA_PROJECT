@@ -12,7 +12,7 @@ MODELS_DIR = os.path.join(ML_DIR, 'models')
 
 os.makedirs(MODELS_DIR, exist_ok=True)
 
-# 2. Load dataset
+# 2. Load datasetz
 df = pd.read_csv(DATA_PATH)
 df['date'] = pd.to_datetime(df['date'])
 df = df.sort_values('date').reset_index(drop=True)

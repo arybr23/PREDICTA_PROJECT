@@ -8,7 +8,7 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 ML_DIR = os.path.dirname(SRC_DIR)
 DATA_PATH = os.path.join(ML_DIR, 'data', 'processed', 'feature_matrix.csv')
-MODEL_PATH = os.path.join(ML_DIR, 'models', 'base_1week.model')
+MODEL_PATH = os.path.join(ML_DIR, 'models', 'model_1week.model')
 
 # 2. Load feature data
 df = pd.read_csv(DATA_PATH)
