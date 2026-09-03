@@ -58,7 +58,7 @@ function Sidebar() {
       </nav>
 
       <div className="border-t border-border px-5 py-4">
-        <p className="text-xs text-text-muted">ISIF Predicta v1.0</p>
+        <p className="text-xs text-text-muted">PREDICTA v1.0</p>
       </div>
     </aside>
   );
