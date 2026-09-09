@@ -8,12 +8,22 @@ from sklearn.metrics import mean_squared_error, mean_absolute_error
 SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 ML_DIR = os.path.dirname(SRC_DIR)
 DATA_PATH = os.path.join(ML_DIR, 'data', 'processed', 'feature_matrix.csv')
-MODEL_PATH = os.path.join(ML_DIR, 'models', 'model_1week.model')
+MODEL_PATH = os.path.join(ML_DIR, 'models', 'model_2years.model')
 
 # 2. Load feature data
 df = pd.read_csv(DATA_PATH)
 
-features = ['lag_1', 'lag_7', 'rolling_7_avg', 'is_weekend', 'is_rainy', 'stockout_flag']
+features = [
+    'lag_1', 'lag_2', 'lag_3', 'lag_7', 'lag_14',
+    'rolling_3_mean', 'rolling_3_std',
+    'rolling_7_mean', 'rolling_7_std',
+    'rolling_14_mean', 'rolling_14_std',
+    'lag_1_stockout', 'lag_7_stockout', 'stockout_last_7',
+    'date.is_weekend', 'is_holiday', 'date.month', 'date.day',
+    'hijri_month', 'hijri_day',
+    'weather', 'temperature',
+    'item_id',
+]
 target = 'units_sold'
 
 X = df[features]

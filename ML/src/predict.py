@@ -28,7 +28,17 @@ df = pd.read_csv(FEATURE_MATRIX_PATH)
 # Get the latest available date entry for each item to forecast tomorrow
 latest_records = df.sort_values('date').groupby('item_id').last().reset_index()
 
-features = ['lag_1', 'lag_7', 'rolling_7_avg', 'is_weekend', 'is_rainy', 'stockout_flag']
+features = [
+    'lag_1', 'lag_2', 'lag_3', 'lag_7', 'lag_14',
+    'rolling_3_mean', 'rolling_3_std',
+    'rolling_7_mean', 'rolling_7_std',
+    'rolling_14_mean', 'rolling_14_std',
+    'lag_1_stockout', 'lag_7_stockout', 'stockout_last_7',
+    'date.is_weekend', 'is_holiday', 'date.month', 'date.day',
+    'hijri_month', 'hijri_day',
+    'weather', 'temperature',
+    'item_id',
+]
 
 # 4. Generate itemized predictions
 predictions = []
@@ -36,12 +46,14 @@ total_predicted_units = 0
 
 for _, row in latest_records.iterrows():
     X_input = np.array([[
-        row['lag_1'], 
-        row['lag_7'], 
-        row['rolling_7_avg'], 
-        1,  # Example: tomorrow is weekend (1 or 0)
-        0,  # Example: tomorrow is rainy (1 or 0)
-        0   # Stockout flag baseline
+        row['lag_1'], row['lag_2'], row['lag_3'], row['lag_7'], row['lag_14'],
+        row['rolling_3_mean'], row['rolling_3_std'],
+        row['rolling_7_mean'], row['rolling_7_std'],
+        row['rolling_14_mean'], row['rolling_14_std'],
+        row['date.is_weekend'], row['is_holiday'], row['date.month'], row['date.day'],
+        row['hijri_month'], row['hijri_day'],
+        row['weather'], row['temperature'],
+        row['item_id'],
     ]])
     
     pred_val = int(np.round(model.predict(X_input)[0]))

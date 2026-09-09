@@ -9,7 +9,17 @@ def run_incremental_training(new_data_path, model_path="models/active_model.mode
     new_df = pd.read_csv(new_data_path)
     
     # 2. Extract features and target variable
-    features = ['lag_1', 'lag_7', 'rolling_7_avg', 'is_weekend', 'is_rainy', 'stockout_flag']
+    features = [
+        'lag_1', 'lag_2', 'lag_3', 'lag_7', 'lag_14',
+        'rolling_3_mean', 'rolling_3_std',
+        'rolling_7_mean', 'rolling_7_std',
+        'rolling_14_mean', 'rolling_14_std',
+        'lag_1_stockout', 'lag_7_stockout', 'stockout_last_7',
+        'date.is_weekend', 'is_holiday', 'date.month', 'date.day',
+        'hijri_month', 'hijri_day',
+        'weather', 'temperature',
+        'item_id',
+    ]
     target = 'units_sold'
     
     X_new = new_df[features]
