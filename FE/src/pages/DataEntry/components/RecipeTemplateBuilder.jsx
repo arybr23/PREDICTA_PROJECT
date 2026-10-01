@@ -1,45 +1,53 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-const menuItems = [
-  { id: 1, name: "Grilled Chicken Bowl" },
-  { id: 2, name: "Lamb Kebab Plate" },
-  { id: 3, name: "Veggie Stir-Fry" },
-  { id: 4, name: "Fish Tacos" },
-  { id: 5, name: "Caesar Salad" },
-];
+const UNITS = ["kg", "L", "pcs"];
 
-const ingredients = [
-  { id: 1, name: "Chicken Breast", unit: "kg" },
-  { id: 2, name: "Basmati Rice", unit: "kg" },
-  { id: 3, name: "Olive Oil", unit: "L" },
-  { id: 4, name: "Bell Peppers", unit: "kg" },
-  { id: 5, name: "Garlic", unit: "kg" },
-  { id: 6, name: "Onions", unit: "kg" },
-];
+function RecipeTemplateBuilder({ items = [], defaultRecipes = {}, onSave, saving }) {
+  const [requested, setRequested] = useState("");
+  // Edits are kept per item; anything untouched falls back to the saved recipe.
+  const [drafts, setDrafts] = useState({});
 
-function buildInitialMappings() {
-  const mappings = {};
-  menuItems.forEach((menu) => {
-    mappings[menu.id] = {};
-    ingredients.forEach((ing) => {
-      mappings[menu.id][ing.id] = "";
-    });
-  });
-  return mappings;
-}
+  const selected = useMemo(() => {
+    if (items.some((i) => i.item_id === requested)) return requested;
+    return items[0]?.item_id || "";
+  }, [items, requested]);
 
-function RecipeTemplateBuilder() {
-  const [selectedMenu, setSelectedMenu] = useState(menuItems[0].id);
-  const [mappings, setMappings] = useState(buildInitialMappings);
+  const saved = defaultRecipes[selected] || [];
+  const lines = drafts[selected] ?? saved.map((r) => ({ ...r }));
 
-  const handleChange = (ingredientId, value) => {
-    setMappings((prev) => ({
+  const setLines = (updater) => {
+    setDrafts((prev) => ({
       ...prev,
-      [selectedMenu]: {
-        ...prev[selectedMenu],
-        [ingredientId]: value,
-      },
+      [selected]: typeof updater === "function" ? updater(lines) : updater,
     }));
+  };
+
+  const selectedName = useMemo(
+    () => items.find((i) => i.item_id === selected)?.name || "",
+    [items, selected]
+  );
+
+  const updateLine = (index, patch) => {
+    setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
+  };
+
+  const addLine = () => {
+    setLines((prev) => [...prev, { ingredient: "", qty: "", unit: "kg" }]);
+  };
+
+  const removeLine = (index) => {
+    setLines((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSave = () => {
+    const recipe = lines
+      .filter((l) => l.ingredient.trim())
+      .map((l) => ({
+        ingredient: l.ingredient.trim(),
+        qty: Number(l.qty) || 0,
+        unit: l.unit,
+      }));
+    onSave?.(selected, recipe);
   };
 
   return (
@@ -59,12 +67,12 @@ function RecipeTemplateBuilder() {
       </label>
       <select
         id="menu-select"
-        value={selectedMenu}
-        onChange={(e) => setSelectedMenu(Number(e.target.value))}
+        value={selected}
+        onChange={(e) => setRequested(e.target.value)}
         className="mb-5 w-full rounded-lg border border-border bg-bg px-3 py-2.5 text-sm text-text-main outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/30"
       >
-        {menuItems.map((item) => (
-          <option key={item.id} value={item.id}>
+        {items.map((item) => (
+          <option key={item.item_id} value={item.item_id}>
             {item.name}
           </option>
         ))}
@@ -77,36 +85,82 @@ function RecipeTemplateBuilder() {
               <th className="pb-2">Ingredient</th>
               <th className="pb-2 text-right">Multiplier</th>
               <th className="pb-2 text-right">Unit</th>
+              <th className="pb-2" />
             </tr>
           </thead>
           <tbody>
-            {ingredients.map((ing) => (
-              <tr
-                key={ing.id}
-                className="border-b border-border/50 last:border-0"
-              >
-                <td className="py-2.5 font-medium text-text-main">{ing.name}</td>
+            {lines.length === 0 && (
+              <tr>
+                <td colSpan={4} className="py-4 text-sm text-text-muted">
+                  No ingredients mapped yet.
+                </td>
+              </tr>
+            )}
+            {lines.map((line, index) => (
+              <tr key={index} className="border-b border-border/50 last:border-0">
+                <td className="py-2.5 pr-2">
+                  <input
+                    type="text"
+                    value={line.ingredient}
+                    onChange={(e) => updateLine(index, { ingredient: e.target.value })}
+                    className="w-full rounded-lg border border-border bg-bg px-2 py-1.5 text-sm text-text-main outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                  />
+                </td>
                 <td className="py-2.5 text-right">
                   <input
                     type="number"
                     min="0"
-                    step="0.1"
-                    placeholder="0.0"
-                    value={mappings[selectedMenu][ing.id]}
-                    onChange={(e) => handleChange(ing.id, e.target.value)}
-                    className="w-20 rounded-lg border border-border bg-bg px-2 py-1.5 text-right text-sm text-text-main outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/30"
+                    step="0.001"
+                    value={line.qty}
+                    onChange={(e) => updateLine(index, { qty: e.target.value })}
+                    className="w-24 rounded-lg border border-border bg-bg px-2 py-1.5 text-right text-sm text-text-main outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
                   />
                 </td>
-                <td className="py-2.5 text-right text-text-muted">{ing.unit}</td>
+                <td className="py-2.5 text-right">
+                  <select
+                    value={line.unit}
+                    onChange={(e) => updateLine(index, { unit: e.target.value })}
+                    className="rounded-lg border border-border bg-bg px-2 py-1.5 text-sm text-text-main outline-none focus:border-primary focus:ring-1 focus:ring-primary/30"
+                  >
+                    {UNITS.map((u) => (
+                      <option key={u} value={u}>
+                        {u}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="py-2.5 pl-2 text-right">
+                  <button
+                    type="button"
+                    onClick={() => removeLine(index)}
+                    className="rounded-md px-2 py-1 text-xs font-medium text-text-muted transition-colors hover:bg-bg hover:text-accent-dark"
+                  >
+                    Remove
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <button className="mt-5 w-full rounded-lg border border-border bg-bg px-4 py-2.5 text-sm font-semibold text-text-main transition-colors hover:bg-border/50">
-        Save Recipe Template
-      </button>
+      <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={addLine}
+          className="rounded-lg border border-border bg-bg px-4 py-2.5 text-sm font-semibold text-text-main transition-colors hover:bg-border/50"
+        >
+          Add Ingredient
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-60"
+        >
+          {saving ? "Saving…" : `Save Recipe for ${selectedName || "Item"}`}
+        </button>
+      </div>
     </section>
   );
 }

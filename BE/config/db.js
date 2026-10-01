@@ -1,15 +1,16 @@
+require("dotenv").config();
 const mongoose = require("mongoose");
 
 const connectDB = async () => {
-  const mongoUri = process.env.MONGO_URI;
+  const mongoUrl = process.env.MONGO_URL;
 
-  if (!mongoUri) {
-    console.warn("MONGO_URI is not set. MongoDB connection skipped.");
+  if (!mongoUrl) {
+    console.warn("MONGO_URL is not set. MongoDB connection skipped.");
     return;
   }
 
   try {
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(mongoUrl);
     console.log("MongoDB connected successfully");
   } catch (error) {
     console.error("MongoDB connection failed:", error.message);

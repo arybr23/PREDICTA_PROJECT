@@ -1,7 +1,16 @@
-function OrderReceipt({ cart, onUpdateQuantity, onRemoveItem, onClearCart }) {
+import { formatCurrency } from "../../../lib/format";
+
+function OrderReceipt({
+  cart,
+  taxRate = 0.1,
+  onUpdateQuantity,
+  onRemoveItem,
+  onClearCart,
+}) {
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const tax = subtotal * 0.08;
+  const tax = Math.round(subtotal * taxRate);
   const total = subtotal + tax;
+  const taxLabel = `Tax (${Math.round(taxRate * 100)}%)`;
 
   return (
     <section className="flex h-full flex-col rounded-xl border border-border bg-surface shadow-sm">
@@ -40,7 +49,7 @@ function OrderReceipt({ cart, onUpdateQuantity, onRemoveItem, onClearCart }) {
                     {item.name}
                   </p>
                   <p className="text-xs text-text-muted">
-                    ${item.price.toFixed(2)} each
+                    {formatCurrency(item.price)} each
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -66,25 +75,25 @@ function OrderReceipt({ cart, onUpdateQuantity, onRemoveItem, onClearCart }) {
                     +
                   </button>
                 </div>
-                <span className="w-16 text-right text-sm font-semibold text-text-main">
-                  ${(item.price * item.qty).toFixed(2)}
+                <span className="w-20 text-right text-sm font-semibold text-text-main">
+                  {formatCurrency(item.price * item.qty)}
                 </span>
               </div>
             ))}
           </div>
 
-          <div className="border-t border-border px-5 py-4 space-y-2">
+          <div className="space-y-2 border-t border-border px-5 py-4">
             <div className="flex justify-between text-sm text-text-muted">
               <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+              <span>{formatCurrency(subtotal)}</span>
             </div>
             <div className="flex justify-between text-sm text-text-muted">
-              <span>Tax (8%)</span>
-              <span>${tax.toFixed(2)}</span>
+              <span>{taxLabel}</span>
+              <span>{formatCurrency(tax)}</span>
             </div>
             <div className="flex justify-between border-t border-border pt-2 text-base font-bold text-text-main">
               <span>Total</span>
-              <span>${total.toFixed(2)}</span>
+              <span>{formatCurrency(total)}</span>
             </div>
           </div>
         </>

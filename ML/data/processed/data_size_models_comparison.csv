@@ -1,7 +1,7 @@
 Model File,Horizon,Training Samples,MAE,RMSE,Accuracy (%)
-model_1week.model,1 Week,175,25.06,38.62,61.22
-model_1month.model,1 Month,750,24.95,38.13,59.96
-model_3months.model,3 Months,2250,26.54,37.65,58.27
-model_6months.model,6 Months,4500,27.18,40.79,55.07
-model_1year.model,1 Year,9125,22.39,34.12,63.56
-model_2years.model,2 Years,17450,22.36,35.94,63.65
+model_1week.model,1 Week,175,15.06,25.01,80.76
+model_1month.model,1 Month,750,15.24,25.0,79.97
+model_3months.model,3 Months,2250,11.81,17.62,84.18
+model_6months.model,6 Months,4500,13.19,19.0,81.75
+model_1year.model,1 Year,9125,13.14,17.76,80.89
+model_2years.model,2 Years,17450,11.72,15.81,82.19

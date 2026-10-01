@@ -1,4 +1,24 @@
 {
+  "name": "isif-predicta",
+  "private": true,
+  "version": "1.0.0",
+  "description": "PREDICTA — demand forecasting and ingredient planning for Indonesian minimarkets",
+  "scripts": {
+    "dev:be": "cd BE && node server.js",
+    "dev:fe": "cd FE && npm run dev",
+    "dev": "npm run dev:be & npm run dev:fe",
+
+    "ml:setup": "cd ML && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt",
+    "ml:generate": "cd ML && ./venv/bin/python src/generate_mock_data.py",
+    "ml:prep": "cd ML && ./venv/bin/python src/dataset_prep.py",
+    "ml:train": "cd ML && ./venv/bin/python src/train_multiple_models_complete.py",
+    "ml:predict": "cd ML && ./venv/bin/python src/predict.py",
+    "ml:evaluate": "cd ML && ./venv/bin/python src/evaluate.py",
+    "ml:benchmark": "cd ML && ./venv/bin/python src/benchmark.py",
+
+    "build": "cd FE && npm run build",
+    "lint": "cd FE && npm run lint"
+  },
   "dependencies": {
     "@recharts/devtools": "^0.0.14",
     "recharts": "^3.10.0"

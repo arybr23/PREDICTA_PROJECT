@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import { useAuth } from "../lib/AuthContext";
 
 const navItems = [
   {
@@ -29,6 +30,16 @@ const navItems = [
     ),
   },
   {
+    to: "/stores",
+    label: "Stores",
+    adminOnly: true,
+    icon: (
+      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 9 4.5 3.75h15L21.75 9M4.5 9v10.5a.75.75 0 0 0 .75.75h13.5a.75.75 0 0 0 .75-.75V9m-18 0h18M9.75 19.5v-5.25h4.5v5.25" />
+      </svg>
+    ),
+  },
+  {
     to: "/account",
     label: "Account",
     icon: (
@@ -40,6 +51,8 @@ const navItems = [
 ];
 
 function Sidebar() {
+  const { user, logout } = useAuth();
+
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-border bg-surface shadow-sm">
       <div className="flex h-14 items-center border-b border-border px-5">
@@ -47,7 +60,9 @@ function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map((item) => (
+        {navItems
+          .filter((item) => !item.adminOnly || user?.role === "admin")
+          .map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -66,8 +81,22 @@ function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-border px-5 py-4">
-        <p className="text-xs text-text-muted">PREDICTA v1.0</p>
+      <div className="border-t border-border px-4 py-3">
+        {user && (
+          <div className="mb-2 truncate text-xs text-text-muted">
+            {user.name}
+          </div>
+        )}
+        <button
+          onClick={logout}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+          </svg>
+          Sign Out
+        </button>
+        <p className="mt-2 text-xs text-text-muted">PREDICTA v1.0</p>
       </div>
     </aside>
   );
