@@ -82,6 +82,8 @@ export const api = {
   firm: () => request("/firm"),
   firmCreate: (firmName) => post("/firm", { firmName }),
   firmJoin: (firmId) => post("/account/firm-request", { firmId }),
+  firmAccept: (firmId, email) => post(`/firm/${firmId}/accept`, { email }),
+  firmReject: (firmId, email) => post(`/firm/${firmId}/reject`, { email }),
 
   stores: () => request("/stores"),
   storeCreate: (storeName) => post("/stores", { storeName }),

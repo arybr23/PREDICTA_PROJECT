@@ -3,6 +3,7 @@ import ProfileCard from "./components/ProfileCard";
 import FirmOptions from "./components/FirmOptions";
 import FirmCard from "./components/FirmCard";
 import PendingBanner from "./components/PendingBanner";
+import JoinRequests from "./components/JoinRequests";
 
 function AccountProfile() {
   const { user } = useAuth();
@@ -28,6 +29,10 @@ function AccountProfile() {
         <FirmCard firmName={user.firmName} firmId={user.firmId} role={user.role} />
       ) : (
         <FirmOptions />
+      )}
+
+      {hasFirm && user?.role === "admin" && (
+        <JoinRequests firmId={user.firmId} />
       )}
     </div>
   );

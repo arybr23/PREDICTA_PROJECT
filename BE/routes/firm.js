@@ -14,6 +14,42 @@ function parseCookies(header) {
   return cookies;
 }
 
+/**
+ * Session + admin check for the request-management routes.
+ * Returns { account, firm }, or sends the error response and returns null.
+ */
+async function requireAdminOfFirm(req, res, firmId) {
+  const cookies = parseCookies(req.headers.cookie);
+  const userId = cookies.session;
+
+  if (!userId) {
+    res.status(401).json({ status: "error", message: "Not logged in" });
+    return null;
+  }
+
+  const account = await Account.findOne({ userId });
+  if (!account) {
+    res.status(401).json({ status: "error", message: "Session invalid" });
+    return null;
+  }
+
+  if (account.firmId !== firmId || account.role !== "admin") {
+    res.status(403).json({ status: "error", message: "Admin access required" });
+    return null;
+  }
+
+  const firm = await Firm.findOne({ firmId });
+  if (!firm) {
+    res.status(404).json({
+      status: "error",
+      message: `Firm '${firmId}' not found`,
+    });
+    return null;
+  }
+
+  return { account, firm };
+}
+
 /** POST /api/firm — create a new firm (session-authenticated). */
 router.post("/", async (req, res) => {
   const { firmName } = req.body || {};
@@ -99,7 +135,10 @@ router.post("/", async (req, res) => {
   }
 });
 
-/** POST /api/firm/:firmId/accept — accept a pending account request. */
+/**
+ * POST /api/firm/:firmId/accept — accept a pending account request (admin only).
+ * Body: { email }
+ */
 router.post("/:firmId/accept", async (req, res) => {
   const { firmId } = req.params;
   const { email } = req.body || {};
@@ -112,13 +151,9 @@ router.post("/:firmId/accept", async (req, res) => {
   }
 
   try {
-    const firm = await Firm.findOne({ firmId });
-    if (!firm) {
-      return res.status(404).json({
-        status: "error",
-        message: `Firm '${firmId}' not found`,
-      });
-    }
+    const ctx = await requireAdminOfFirm(req, res, firmId);
+    if (!ctx) return;
+    const { firm } = ctx;
 
     const index = firm.accountRequest.findIndex((r) => r.email === email);
     if (index === -1) {
@@ -160,6 +195,54 @@ router.post("/:firmId/accept", async (req, res) => {
         storeId: request.storeId || "",
       },
     });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
+/**
+ * POST /api/firm/:firmId/reject — decline a pending account request (admin only).
+ * Body: { email }
+ *
+ * The request is dropped from the firm and the requester's pending flags are
+ * cleared, so their "request pending" banner disappears and they are free to
+ * request another firm.
+ */
+router.post("/:firmId/reject", async (req, res) => {
+  const { firmId } = req.params;
+  const { email } = req.body || {};
+
+  if (!email) {
+    return res.status(400).json({
+      status: "error",
+      message: "'email' is required",
+    });
+  }
+
+  try {
+    const ctx = await requireAdminOfFirm(req, res, firmId);
+    if (!ctx) return;
+    const { firm } = ctx;
+
+    const index = firm.accountRequest.findIndex((r) => r.email === email);
+    if (index === -1) {
+      return res.status(404).json({
+        status: "error",
+        message: `No pending request from '${email}'`,
+      });
+    }
+
+    firm.accountRequest.splice(index, 1);
+    await firm.save();
+
+    const requester = await Account.findOne({ email });
+    if (requester && requester.pendingFirmId === firmId) {
+      requester.pendingFirmId = "";
+      requester.pendingFirmName = "";
+      await requester.save();
+    }
+
+    res.status(200).json({ status: "success", email });
   } catch (error) {
     res.status(500).json({ status: "error", message: error.message });
   }
