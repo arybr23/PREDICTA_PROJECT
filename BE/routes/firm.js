@@ -67,7 +67,6 @@ router.post("/", async (req, res) => {
     account.pendingFirmId = "";
     account.pendingFirmName = "";
     account.role = "admin";
-    account.initialized = true;
     await account.save();
 
     // The userId changed, so the old session cookie is no longer valid.
@@ -146,7 +145,6 @@ router.post("/:firmId/accept", async (req, res) => {
     account.pendingFirmId = "";
     account.pendingFirmName = "";
     account.role = request.role;
-    account.initialized = true;
     await account.save();
 
     firm.members.push({ email: account.email, role: account.role });

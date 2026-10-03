@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 
 /**
@@ -6,9 +7,23 @@ import { useAuth } from "../lib/AuthContext";
  * Children are never mounted (so their data hooks never fetch) while empty.
  */
 function WorkspaceGate({ title, subtitle, emptyTitle, emptyDescription, children }) {
-  const { initialized } = useAuth();
+  const { initialized, initialize } = useAuth();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(null);
 
   if (initialized) return children;
+
+  const handleInitialize = async () => {
+    setPending(true);
+    setError(null);
+    try {
+      await initialize();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setPending(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6 md:px-6">
@@ -24,6 +39,21 @@ function WorkspaceGate({ title, subtitle, emptyTitle, emptyDescription, children
       >
         <p className="text-sm font-semibold text-text-main">{emptyTitle}</p>
         <p className="mt-1 text-sm text-text-muted">{emptyDescription}</p>
+
+        <button
+          type="button"
+          onClick={handleInitialize}
+          disabled={pending}
+          className="mt-5 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+        >
+          {pending ? "Initialising…" : "Initialise workspace"}
+        </button>
+
+        {error && (
+          <p className="mt-3 text-sm text-accent-dark" role="alert">
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );

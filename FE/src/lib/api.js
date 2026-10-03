@@ -87,6 +87,14 @@ export const api = {
   storeCreate: (storeName) => post("/stores", { storeName }),
   storeRename: (storeId, storeName) => patch(`/stores/${storeId}`, { storeName }),
   storeDelete: (storeId) => request(`/stores/${storeId}`, { method: "DELETE" }),
+  storeInitialize: (storeId, options = {}) =>
+    post(`/stores/${storeId}/initialize`, options),
+  storeMenu: (storeId) => request(`/stores/${storeId}/menu`),
+  storeMenuCreate: (storeId, item) => post(`/stores/${storeId}/menu`, item),
+  storeMenuUpdate: (storeId, itemId, item) =>
+    patch(`/stores/${storeId}/menu/${itemId}`, item),
+  storeMenuDelete: (storeId, itemId) =>
+    request(`/stores/${storeId}/menu/${itemId}`, { method: "DELETE" }),
 };
 
 export { BASE_URL };

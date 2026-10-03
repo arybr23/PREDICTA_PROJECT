@@ -4,6 +4,7 @@ import { useApi, useMutation } from "../../lib/useApi";
 import { formatCurrency } from "../../lib/format";
 import { ErrorBlock, LoadingBlock } from "../../globalComponents/AsyncState";
 import WorkspaceGate from "../../globalComponents/WorkspaceGate";
+import StoreGate from "../../globalComponents/StoreGate";
 import CategoryNav from "./components/CategoryNav";
 import MenuGrid from "./components/MenuGrid";
 import OrderReceipt from "./components/OrderReceipt";
@@ -18,7 +19,9 @@ function Cashier() {
       emptyTitle="No menu yet"
       emptyDescription="Menu items, categories, and checkout will appear here once your workspace is set up."
     >
-      <CashierContent />
+      <StoreGate title="Point of Sale" subtitle="Select items and manage orders">
+        <CashierContent />
+      </StoreGate>
     </WorkspaceGate>
   );
 }

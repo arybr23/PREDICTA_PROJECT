@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./lib/AuthContext";
+import { StoreProvider } from "./lib/StoreContext";
 import TopNavBar from "./globalComponents/TopNavBar";
 import Sidebar from "./globalComponents/Sidebar";
 import LandingPage from "./pages/Auth/LandingPage";
@@ -8,6 +9,7 @@ import DataEntry from "./pages/DataEntry/DataEntry";
 import Cashier from "./pages/Cashier/Cashier";
 import AccountProfile from "./pages/AccountProfile/AccountProfile";
 import Stores from "./pages/Stores/Stores";
+import Menu from "./pages/Menu/Menu";
 
 function LoadingScreen() {
   return (
@@ -26,22 +28,28 @@ function AuthenticatedApp() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-bg font-sans">
-        <Sidebar />
-        <TopNavBar />
-        <main className="pl-60">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/data-entry" element={<DataEntry />} />
-            <Route path="/cashier" element={<Cashier />} />
-            <Route
-              path="/stores"
-              element={isAdmin ? <Stores /> : <Navigate to="/" replace />}
-            />
-            <Route path="/account" element={<AccountProfile />} />
-          </Routes>
-        </main>
-      </div>
+      <StoreProvider>
+        <div className="min-h-screen bg-bg font-sans">
+          <Sidebar />
+          <TopNavBar />
+          <main className="pl-60">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/data-entry" element={<DataEntry />} />
+              <Route path="/cashier" element={<Cashier />} />
+              <Route
+                path="/stores"
+                element={isAdmin ? <Stores /> : <Navigate to="/" replace />}
+              />
+              <Route
+                path="/menu"
+                element={isAdmin ? <Menu /> : <Navigate to="/" replace />}
+              />
+              <Route path="/account" element={<AccountProfile />} />
+            </Routes>
+          </main>
+        </div>
+      </StoreProvider>
     </BrowserRouter>
   );
 }

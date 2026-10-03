@@ -3,6 +3,8 @@ import { api } from "../../lib/api";
 import { useApi, useMutation } from "../../lib/useApi";
 import { ErrorBlock, LoadingBlock } from "../../globalComponents/AsyncState";
 import WorkspaceGate from "../../globalComponents/WorkspaceGate";
+import StoreGate from "../../globalComponents/StoreGate";
+import { useStores } from "../../lib/StoreContext";
 import AdaptationBadge from "./components/AdaptationBadge";
 import DailyLogForm from "./components/DailyLogForm";
 import StockoutToggle from "./components/StockoutToggle";
@@ -23,12 +25,18 @@ function DataEntry() {
       emptyTitle="No entries yet"
       emptyDescription="Daily logs, stockout tracking, and recipe templates will appear here once your workspace is set up."
     >
-      <DataEntryContent />
+      <StoreGate
+        title="Data Entry &amp; Adaptation"
+        subtitle="Log daily sales and adapt the forecast model"
+      >
+        <DataEntryContent />
+      </StoreGate>
     </WorkspaceGate>
   );
 }
 
 function DataEntryContent() {
+  const { selectedStoreId, selectedStore, refreshStores } = useStores();
   const catalog = useApi(() => api.catalog(), []);
   const metrics = useApi(() => api.metrics(), []);
   const recipes = useApi(() => api.recipes(), []);
@@ -79,6 +87,15 @@ function DataEntryContent() {
     if (ok) {
       setSales({});
       metrics.reload();
+      // First real data write for this store also makes it initialised.
+      if (selectedStoreId && selectedStore && !selectedStore.initialized) {
+        try {
+          await api.storeInitialize(selectedStoreId);
+          refreshStores();
+        } catch {
+          /* the store stays pending; the admin can seed it from Stores */
+        }
+      }
     }
   };
 

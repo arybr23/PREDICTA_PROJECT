@@ -1,8 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
+const requireInitialized = require("../middleware/requireInitialized");
+
 const { CATEGORY_LABEL, CATEGORY_ORDER, CATEGORIES, PRODUCTS, getProduct } = require("../config/catalog");
 const store = require("../services/store");
+
+router.use(requireInitialized);
 
 const TAX_RATE = 0.10; // PPN
 

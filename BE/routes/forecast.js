@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
+const requireInitialized = require("../middleware/requireInitialized");
+
 const {
   CATEGORY_LABEL,
   PRODUCTS,
@@ -9,6 +11,8 @@ const {
 } = require("../config/catalog");
 const python = require("../services/python");
 const store = require("../services/store");
+
+router.use(requireInitialized);
 
 /** Demand-weighted average selling price, used to price avoided overstock. */
 function averageUnitPrice() {

@@ -3,6 +3,7 @@ import { api } from "../../lib/api";
 import { useApi } from "../../lib/useApi";
 import { ErrorBlock, SkeletonBlock } from "../../globalComponents/AsyncState";
 import WorkspaceGate from "../../globalComponents/WorkspaceGate";
+import StoreGate from "../../globalComponents/StoreGate";
 import HeroForecastCard from "./components/HeroForecastCard";
 import IngredientsTable from "./components/IngredientsTable";
 import SalesBreakdown from "./components/SalesBreakdown";
@@ -16,7 +17,12 @@ function Dashboard() {
       emptyTitle="No predictions yet"
       emptyDescription="Forecasts, ingredients, and metrics will appear here once your workspace is set up."
     >
-      <DashboardContent />
+      <StoreGate
+        title="Dashboard"
+        subtitle="Forecast engine and operational metrics"
+      >
+        <DashboardContent />
+      </StoreGate>
     </WorkspaceGate>
   );
 }

@@ -237,6 +237,9 @@ router.post("/initialize", async (req, res) => {
         email: account.email,
         role: account.role,
         firmName: account.firmName,
+        firmId: account.firmId,
+        pendingFirmId: account.pendingFirmId,
+        pendingFirmName: account.pendingFirmName,
         initialized: true,
       },
     });
@@ -311,7 +314,6 @@ router.post("/firm-request", async (req, res) => {
 
     account.pendingFirmId = firm.firmId;
     account.pendingFirmName = firm.firmName;
-    account.initialized = true;
     await account.save();
 
     res.status(201).json({

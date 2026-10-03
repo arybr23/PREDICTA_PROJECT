@@ -5,6 +5,7 @@ const router = express.Router();
 const Firm = require("../models/Firms");
 const Account = require("../models/Accounts");
 const Store = require("../models/Stores");
+const { PRODUCTS, CATEGORY_LABEL } = require("../config/catalog");
 
 function parseCookies(header) {
   const cookies = {};
@@ -61,7 +62,46 @@ async function generateStoreId() {
 }
 
 function toPublic(store) {
-  return { storeId: store.storeId, storeName: store.storeName };
+  return {
+    storeId: store.storeId,
+    storeName: store.storeName,
+    initialized: store.initialized === true,
+  };
+}
+
+/** Default menu copied into a store when the admin asks for demo data. */
+function defaultMenu() {
+  return PRODUCTS.map((product) => ({
+    itemId: product.itemId,
+    name: product.name,
+    category: product.category,
+    categoryLabel: CATEGORY_LABEL[product.category] || "",
+    price: product.price,
+    icon: product.icon,
+    recipe: product.recipe || [],
+  }));
+}
+
+/** Resolve a firm store or send the appropriate error and return null. */
+async function firmStore(ctx, storeId, res) {
+  if (!(ctx.firm.stores || []).includes(storeId)) {
+    res.status(404).json({
+      status: "error",
+      message: "Store not found in your firm",
+    });
+    return null;
+  }
+
+  const store = await Store.findOne({ storeId });
+  if (!store) {
+    res.status(404).json({
+      status: "error",
+      message: `Store '${storeId}' not found`,
+    });
+    return null;
+  }
+
+  return store;
 }
 
 /** GET /api/stores — the caller's firm stores (members and admins). */
@@ -172,6 +212,167 @@ router.delete("/:storeId", async (req, res) => {
     await ctx.firm.save();
 
     res.status(200).json({ status: "success", storeId });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
+/**
+ * POST /api/stores/:storeId/initialize — mark a store as set up (admin only).
+ *
+ * Body: { useDefaultData?: boolean }
+ *   useDefaultData — also copy the default catalog into the store's own menu
+ *                    (the "Use default demo data" button on the Stores page).
+ *   omitted        — just flag the store as initialised; used when the admin
+ *                    writes the first real data for it.
+ */
+router.post("/:storeId/initialize", async (req, res) => {
+  const { storeId } = req.params;
+  const useDefaultData = (req.body || {}).useDefaultData === true;
+
+  try {
+    const ctx = await requireFirm(req, res, { adminOnly: true });
+    if (!ctx) return;
+
+    const store = await firmStore(ctx, storeId, res);
+    if (!store) return;
+
+    if (useDefaultData && (!store.menu || store.menu.length === 0)) {
+      store.menu = defaultMenu();
+    }
+    store.initialized = true;
+    await store.save();
+
+    res.status(200).json({ status: "success", store: toPublic(store) });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
+/** GET /api/stores/:storeId/menu — the store's own menu (admin only). */
+router.get("/:storeId/menu", async (req, res) => {
+  const { storeId } = req.params;
+
+  try {
+    const ctx = await requireFirm(req, res, { adminOnly: true });
+    if (!ctx) return;
+
+    const store = await firmStore(ctx, storeId, res);
+    if (!store) return;
+
+    res.status(200).json({
+      status: "success",
+      storeId: store.storeId,
+      initialized: store.initialized === true,
+      items: store.menu || [],
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
+/** POST /api/stores/:storeId/menu — add a menu item (admin only). */
+router.post("/:storeId/menu", async (req, res) => {
+  const { storeId } = req.params;
+  const { name, category, price, icon, recipe } = req.body || {};
+
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ status: "error", message: "'name' is required" });
+  }
+
+  try {
+    const ctx = await requireFirm(req, res, { adminOnly: true });
+    if (!ctx) return;
+
+    const store = await firmStore(ctx, storeId, res);
+    if (!store) return;
+
+    const categoryKey = String(category || "makanan_berat");
+    const item = {
+      itemId: `M-${crypto.randomBytes(2).toString("hex").toUpperCase()}`,
+      name: String(name).trim(),
+      category: categoryKey,
+      categoryLabel: CATEGORY_LABEL[categoryKey] || categoryKey,
+      price: Number(price) || 0,
+      icon: String(icon || ""),
+      recipe: Array.isArray(recipe) ? recipe : [],
+    };
+
+    store.menu = [...(store.menu || []), item];
+    // Writing a menu item is one of the ways a store becomes initialised.
+    store.initialized = true;
+    await store.save();
+
+    res.status(201).json({ status: "success", item, store: toPublic(store) });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
+/** PATCH /api/stores/:storeId/menu/:itemId — edit a menu item (admin only). */
+router.patch("/:storeId/menu/:itemId", async (req, res) => {
+  const { storeId, itemId } = req.params;
+  const { name, category, price, icon, recipe } = req.body || {};
+
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ status: "error", message: "'name' is required" });
+  }
+
+  try {
+    const ctx = await requireFirm(req, res, { adminOnly: true });
+    if (!ctx) return;
+
+    const store = await firmStore(ctx, storeId, res);
+    if (!store) return;
+
+    const item = (store.menu || []).find((entry) => entry.itemId === itemId);
+    if (!item) {
+      return res.status(404).json({
+        status: "error",
+        message: `Menu item '${itemId}' not found in this store`,
+      });
+    }
+
+    const categoryKey = String(category || item.category);
+    item.name = String(name).trim();
+    item.category = categoryKey;
+    item.categoryLabel = CATEGORY_LABEL[categoryKey] || categoryKey;
+    item.price = Number(price) || 0;
+    item.icon = String(icon === undefined ? item.icon : icon);
+    if (Array.isArray(recipe)) item.recipe = recipe;
+
+    store.initialized = true;
+    await store.save();
+
+    res.status(200).json({ status: "success", item, store: toPublic(store) });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
+/** DELETE /api/stores/:storeId/menu/:itemId — remove a menu item (admin only). */
+router.delete("/:storeId/menu/:itemId", async (req, res) => {
+  const { storeId, itemId } = req.params;
+
+  try {
+    const ctx = await requireFirm(req, res, { adminOnly: true });
+    if (!ctx) return;
+
+    const store = await firmStore(ctx, storeId, res);
+    if (!store) return;
+
+    const next = (store.menu || []).filter((entry) => entry.itemId !== itemId);
+    if (next.length === (store.menu || []).length) {
+      return res.status(404).json({
+        status: "error",
+        message: `Menu item '${itemId}' not found in this store`,
+      });
+    }
+
+    store.menu = next;
+    await store.save();
+
+    res.status(200).json({ status: "success", storeId, itemId });
   } catch (error) {
     res.status(500).json({ status: "error", message: error.message });
   }

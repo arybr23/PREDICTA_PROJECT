@@ -2,15 +2,32 @@ import { useState } from "react";
 import { api } from "../../lib/api";
 import { useApi, useMutation } from "../../lib/useApi";
 import { ErrorBlock, LoadingBlock } from "../../globalComponents/AsyncState";
+import WorkspaceGate from "../../globalComponents/WorkspaceGate";
+import { useStores } from "../../lib/StoreContext";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary";
 
 function Stores() {
+  return (
+    <WorkspaceGate
+      title="Stores"
+      subtitle="Manage your firm's outlets"
+      emptyTitle="Workspace not initialised"
+      emptyDescription="Set up your workspace first, then you can add stores and give each one its own data."
+    >
+      <StoresContent />
+    </WorkspaceGate>
+  );
+}
+
+function StoresContent() {
+  const { refreshStores } = useStores();
   const stores = useApi(() => api.stores(), []);
   const add = useMutation();
   const rename = useMutation();
   const remove = useMutation();
+  const seed = useMutation();
 
   const [name, setName] = useState("");
   const [editingId, setEditingId] = useState(null);
@@ -19,13 +36,18 @@ function Stores() {
 
   const items = stores.data?.stores || [];
 
+  const sync = () => {
+    stores.reload();
+    refreshStores();
+  };
+
   const handleAdd = async (e) => {
     e.preventDefault();
     setError(null);
     const { ok, error: err } = await add.run(() => api.storeCreate(name.trim()));
     if (ok) {
       setName("");
-      stores.reload();
+      sync();
     } else {
       setError(err.message);
     }
@@ -44,7 +66,7 @@ function Stores() {
     );
     if (ok) {
       setEditingId(null);
-      stores.reload();
+      sync();
     } else {
       setError(err.message);
     }
@@ -55,7 +77,19 @@ function Stores() {
     setError(null);
     const { ok, error: err } = await remove.run(() => api.storeDelete(store.storeId));
     if (ok) {
-      stores.reload();
+      sync();
+    } else {
+      setError(err.message);
+    }
+  };
+
+  const handleUseDemoData = async (store) => {
+    setError(null);
+    const { ok, error: err } = await seed.run(() =>
+      api.storeInitialize(store.storeId, { useDefaultData: true }),
+    );
+    if (ok) {
+      sync();
     } else {
       setError(err.message);
     }
@@ -158,12 +192,33 @@ function Stores() {
                 ) : (
                   <>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-text-main">
-                        {store.storeName}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-medium text-text-main">
+                          {store.storeName}
+                        </p>
+                        <span
+                          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                            store.initialized
+                              ? "bg-primary/10 text-primary"
+                              : "bg-accent/10 text-accent-dark"
+                          }`}
+                        >
+                          {store.initialized ? "Initialised" : "Pending"}
+                        </span>
+                      </div>
                       <p className="text-xs text-text-muted">{store.storeId}</p>
                     </div>
                     <div className="flex shrink-0 gap-2">
+                      {!store.initialized && (
+                        <button
+                          type="button"
+                          onClick={() => handleUseDemoData(store)}
+                          disabled={seed.pending}
+                          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
+                        >
+                          {seed.pending ? "Setting up…" : "Use default demo data"}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => startEdit(store)}

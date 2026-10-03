@@ -1,9 +1,15 @@
 const express = require("express");
 const router = express.Router();
 
+const requireInitialized = require("../middleware/requireInitialized");
+
 const { getProduct, roundQuantity } = require("../config/catalog");
 const python = require("../services/python");
 const store = require("../services/store");
+
+// Mounted at both /api/sales and /api/recipes, so this guards sales entry,
+// sales history and the recipe mapping endpoints.
+router.use(requireInitialized);
 
 const WEATHER_LABELS = ["cerah", "berawan", "hujan_ringan", "hujan_deras", "panas_extreme"];
 

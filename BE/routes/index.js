@@ -9,6 +9,7 @@ const account = require("./account");
 const firm = require("./firm");
 const stores = require("./stores");
 const python = require("../services/python");
+const requireInitialized = require("../middleware/requireInitialized");
 
 const MONGO_STATES = {
   0: "disconnected",
@@ -58,7 +59,7 @@ router.get("/health", (req, res) => {
   });
 });
 
-router.get("/catalog", (req, res) => {
+router.get("/catalog", requireInitialized, (req, res) => {
   const { PRODUCTS, CATEGORY_LABEL } = require("../config/catalog");
   res.status(200).json({
     status: "success",

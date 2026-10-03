@@ -32,8 +32,8 @@ export function AuthProvider({ children }) {
 
   const initialize = async () => {
     const res = await api.initialize();
-    setUser((prev) => (prev ? { ...prev, initialized: true } : prev));
-    return res;
+    setUser(res.account);
+    return res.account;
   };
 
   const refresh = async () => {
