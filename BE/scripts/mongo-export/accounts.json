@@ -1,0 +1,50 @@
+[
+  {
+    "_id": "6aba829fceb0dc8c53741287",
+    "email": "bagus@gus.s",
+    "passwordHash": "62db3ffb9bcd46ca200d7979b3821bb6:862ef6888acd5f7965e554a52a3da8346377b8c2befda3fef6e87306115a6692c3db523875bf91a65b69ffca01c311a538490c9e303627fe79b41e7676f0820c",
+    "name": "Agus Bagus",
+    "userId": "D7EF1287",
+    "firmName": "Buagus Jaya",
+    "role": "manager",
+    "createdAt": "2026-09-28T15:07:11.688Z",
+    "updatedAt": "2026-10-03T09:05:22.193Z",
+    "__v": 0,
+    "firmId": "FIRM-D7EF",
+    "initialized": true,
+    "pendingFirmId": "",
+    "pendingFirmName": ""
+  },
+  {
+    "_id": "6abe0bd06cc5e6239dc7d7f7",
+    "email": "test@test.st",
+    "passwordHash": "bf3612722fcb450591bf6d2312f1b9e5:b68e8fabf444caeea51331daa31467421044b569157de4365321e68a4a694aa9e93462960c6e2ab678dcd1ad48ad4facc07faa4f19f7b8f64a31d5f98e929600",
+    "name": "bagus agus",
+    "userId": "D7EFD7F7",
+    "firmName": "Buagus Jaya",
+    "firmId": "FIRM-D7EF",
+    "pendingFirmId": "",
+    "pendingFirmName": "",
+    "role": "employee",
+    "initialized": true,
+    "createdAt": "2026-10-01T07:29:20.607Z",
+    "updatedAt": "2026-10-03T09:05:22.210Z",
+    "__v": 0
+  },
+  {
+    "_id": "6ac21bd0c56b0ee54fdfb330",
+    "email": "test@gmail.com",
+    "passwordHash": "d751e0661fdff8910ac75f52282cce01:53aa330365ae23388651e70772adfa429df0c2c746379d016d34b67ac38cacd11be334d11dc99eb93edd26684c246351f0d245a8f1d311be697e952d7f974a02",
+    "name": "bagus",
+    "userId": "0000B330",
+    "firmName": "",
+    "firmId": "",
+    "pendingFirmId": "",
+    "pendingFirmName": "",
+    "role": "employee",
+    "initialized": false,
+    "createdAt": "2026-10-04T09:26:40.664Z",
+    "updatedAt": "2026-10-04T09:26:40.735Z",
+    "__v": 0
+  }
+]

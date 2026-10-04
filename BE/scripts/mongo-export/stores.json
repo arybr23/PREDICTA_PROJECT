@@ -1,0 +1,908 @@
+[
+  {
+    "_id": "6abe20b95cd6aa01d46dcb92",
+    "storeName": "Solo Gus - Surakarta",
+    "storeId": "STR-4418",
+    "products": [],
+    "createdAt": "2026-10-01T08:58:33.432Z",
+    "updatedAt": "2026-10-04T17:20:47.214Z",
+    "__v": 17,
+    "initialized": true,
+    "menu": [
+      {
+        "itemId": "P01",
+        "name": "Nasi Goreng Spesial",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 25000,
+        "icon": "\ud83c\udf5b",
+        "recipe": [
+          {
+            "ingredient": "Beras",
+            "qty": 0.2,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Telur",
+            "qty": 1,
+            "unit": "pcs"
+          },
+          {
+            "ingredient": "Ayam",
+            "qty": 0.08,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.025,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Bawang Merah",
+            "qty": 0.03,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Cabai",
+            "qty": 0.02,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Kecap Manis",
+            "qty": 0.02,
+            "unit": "L"
+          }
+        ]
+      },
+      {
+        "itemId": "P02",
+        "name": "Mie Goreng Ayam",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 22000,
+        "icon": "\ud83c\udf5c",
+        "recipe": [
+          {
+            "ingredient": "Mie",
+            "qty": 0.15,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Ayam",
+            "qty": 0.09,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Telur",
+            "qty": 1,
+            "unit": "pcs"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.02,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Bawang Putih",
+            "qty": 0.015,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Kecap Manis",
+            "qty": 0.015,
+            "unit": "L"
+          }
+        ]
+      },
+      {
+        "itemId": "P03",
+        "name": "Nasi Kuning",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 18000,
+        "icon": "\ud83c\udf5a",
+        "recipe": [
+          {
+            "ingredient": "Beras",
+            "qty": 0.18,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Santan",
+            "qty": 0.08,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Kunyit",
+            "qty": 0.01,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Telur",
+            "qty": 1,
+            "unit": "pcs"
+          },
+          {
+            "ingredient": "Kacang Tanah",
+            "qty": 0.03,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P04",
+        "name": "Nasi Uduk",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 18000,
+        "icon": "\ud83c\udf5a",
+        "recipe": [
+          {
+            "ingredient": "Beras",
+            "qty": 0.18,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Santan",
+            "qty": 0.09,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Sereh",
+            "qty": 0.008,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Daun Salam",
+            "qty": 0.002,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Tempe",
+            "qty": 0.05,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P05",
+        "name": "Mie Ayam Bakso",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 20000,
+        "icon": "\ud83c\udf5c",
+        "recipe": [
+          {
+            "ingredient": "Mie",
+            "qty": 0.14,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Ayam",
+            "qty": 0.07,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Bakso",
+            "qty": 0.06,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.015,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Bawang Merah",
+            "qty": 0.02,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P06",
+        "name": "Soto Ayam",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 20000,
+        "icon": "\ud83c\udf72",
+        "recipe": [
+          {
+            "ingredient": "Ayam",
+            "qty": 0.12,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Beras",
+            "qty": 0.1,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Kunyit",
+            "qty": 0.008,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Jahe",
+            "qty": 0.005,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Sereh",
+            "qty": 0.006,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Telur",
+            "qty": 1,
+            "unit": "pcs"
+          }
+        ]
+      },
+      {
+        "itemId": "P07",
+        "name": "Ayam Geprek",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 22000,
+        "icon": "\ud83c\udf57",
+        "recipe": [
+          {
+            "ingredient": "Ayam",
+            "qty": 0.18,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Terigu",
+            "qty": 0.05,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.04,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Cabai",
+            "qty": 0.035,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Bawang Putih",
+            "qty": 0.01,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P08",
+        "name": "Es Teh Manis",
+        "category": "minuman",
+        "categoryLabel": "Drinks",
+        "price": 8000,
+        "icon": "\ud83e\udd64",
+        "recipe": [
+          {
+            "ingredient": "Teh",
+            "qty": 0.004,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.03,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Es Batu",
+            "qty": 0.2,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P09",
+        "name": "Es Jeruk",
+        "category": "minuman",
+        "categoryLabel": "Drinks",
+        "price": 10000,
+        "icon": "\ud83c\udf4a",
+        "recipe": [
+          {
+            "ingredient": "Jeruk",
+            "qty": 0.15,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.025,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Es Batu",
+            "qty": 0.2,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P10",
+        "name": "Kopi Hitam",
+        "category": "minuman",
+        "categoryLabel": "Drinks",
+        "price": 12000,
+        "icon": "\u2615",
+        "recipe": [
+          {
+            "ingredient": "Kopi",
+            "qty": 0.012,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.02,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P11",
+        "name": "Teh Anget",
+        "category": "minuman",
+        "categoryLabel": "Drinks",
+        "price": 7000,
+        "icon": "\ud83c\udf75",
+        "recipe": [
+          {
+            "ingredient": "Teh",
+            "qty": 0.005,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.025,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P12",
+        "name": "Jus Alpukat",
+        "category": "minuman",
+        "categoryLabel": "Drinks",
+        "price": 15000,
+        "icon": "\ud83e\udd51",
+        "recipe": [
+          {
+            "ingredient": "Alpukat",
+            "qty": 0.2,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Susu",
+            "qty": 0.05,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.02,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Es Batu",
+            "qty": 0.1,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P13",
+        "name": "Es Campur",
+        "category": "minuman",
+        "categoryLabel": "Drinks",
+        "price": 15000,
+        "icon": "\ud83c\udf67",
+        "recipe": [
+          {
+            "ingredient": "Es Batu",
+            "qty": 0.25,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Santan",
+            "qty": 0.06,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.03,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Kacang Tanah",
+            "qty": 0.02,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P14",
+        "name": "Kerupuk",
+        "category": "snack",
+        "categoryLabel": "Snacks",
+        "price": 5000,
+        "icon": "\ud83c\udf58",
+        "recipe": [
+          {
+            "ingredient": "Kerupuk Mentah",
+            "qty": 0.05,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.03,
+            "unit": "L"
+          }
+        ]
+      },
+      {
+        "itemId": "P15",
+        "name": "Kue Lumpur",
+        "category": "snack",
+        "categoryLabel": "Snacks",
+        "price": 6000,
+        "icon": "\ud83e\uddc1",
+        "recipe": [
+          {
+            "ingredient": "Terigu",
+            "qty": 0.05,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Telur",
+            "qty": 1,
+            "unit": "pcs"
+          },
+          {
+            "ingredient": "Santan",
+            "qty": 0.04,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.02,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P16",
+        "name": "Pisang Goreng",
+        "category": "snack",
+        "categoryLabel": "Snacks",
+        "price": 10000,
+        "icon": "\ud83c\udf4c",
+        "recipe": [
+          {
+            "ingredient": "Pisang",
+            "qty": 0.18,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Terigu",
+            "qty": 0.06,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.04,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.01,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P17",
+        "name": "Lemper",
+        "category": "snack",
+        "categoryLabel": "Snacks",
+        "price": 7000,
+        "icon": "\ud83c\udf71",
+        "recipe": [
+          {
+            "ingredient": "Beras",
+            "qty": 0.08,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Ayam",
+            "qty": 0.05,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Santan",
+            "qty": 0.03,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Daun Pisang",
+            "qty": 1,
+            "unit": "pcs"
+          }
+        ]
+      },
+      {
+        "itemId": "P18",
+        "name": "Serabi",
+        "category": "snack",
+        "categoryLabel": "Snacks",
+        "price": 8000,
+        "icon": "\ud83e\udd5e",
+        "recipe": [
+          {
+            "ingredient": "Tepung Beras",
+            "qty": 0.06,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Santan",
+            "qty": 0.05,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Gula",
+            "qty": 0.02,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P19",
+        "name": "Tahu Isi",
+        "category": "snack",
+        "categoryLabel": "Snacks",
+        "price": 8000,
+        "icon": "\ud83e\uddc6",
+        "recipe": [
+          {
+            "ingredient": "Tahu",
+            "qty": 0.1,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Terigu",
+            "qty": 0.03,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Sayur",
+            "qty": 0.03,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.03,
+            "unit": "L"
+          }
+        ]
+      },
+      {
+        "itemId": "P20",
+        "name": "Tempe Goreng",
+        "category": "snack",
+        "categoryLabel": "Snacks",
+        "price": 6000,
+        "icon": "\ud83e\uddc6",
+        "recipe": [
+          {
+            "ingredient": "Tempe",
+            "qty": 0.1,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Terigu",
+            "qty": 0.02,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.03,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Bawang Putih",
+            "qty": 0.005,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P21",
+        "name": "Roti Bakar Coklat",
+        "category": "snack",
+        "categoryLabel": "Snacks",
+        "price": 12000,
+        "icon": "\ud83c\udf5e",
+        "recipe": [
+          {
+            "ingredient": "Roti",
+            "qty": 2,
+            "unit": "pcs"
+          },
+          {
+            "ingredient": "Coklat",
+            "qty": 0.02,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Susu",
+            "qty": 0.01,
+            "unit": "L"
+          }
+        ]
+      },
+      {
+        "itemId": "P22",
+        "name": "Telur Dadar",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 10000,
+        "icon": "\ud83c\udf73",
+        "recipe": [
+          {
+            "ingredient": "Telur",
+            "qty": 2,
+            "unit": "pcs"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.02,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Bawang Merah",
+            "qty": 0.015,
+            "unit": "kg"
+          }
+        ]
+      },
+      {
+        "itemId": "P23",
+        "name": "Capcay",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 20000,
+        "icon": "\ud83e\udd58",
+        "recipe": [
+          {
+            "ingredient": "Sayur",
+            "qty": 0.2,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Ayam",
+            "qty": 0.06,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Bawang Putih",
+            "qty": 0.01,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.02,
+            "unit": "L"
+          }
+        ]
+      },
+      {
+        "itemId": "P24",
+        "name": "Nasi Goreng Seafood",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 30000,
+        "icon": "\ud83c\udf64",
+        "recipe": [
+          {
+            "ingredient": "Beras",
+            "qty": 0.2,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Udang",
+            "qty": 0.08,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Telur",
+            "qty": 1,
+            "unit": "pcs"
+          },
+          {
+            "ingredient": "Minyak Goreng",
+            "qty": 0.025,
+            "unit": "L"
+          },
+          {
+            "ingredient": "Bawang Merah",
+            "qty": 0.03,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Kecap Manis",
+            "qty": 0.02,
+            "unit": "L"
+          }
+        ]
+      },
+      {
+        "itemId": "P25",
+        "name": "Bakso Urat",
+        "category": "makanan_berat",
+        "categoryLabel": "Food",
+        "price": 22000,
+        "icon": "\ud83e\udd63",
+        "recipe": [
+          {
+            "ingredient": "Bakso",
+            "qty": 0.15,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Mie",
+            "qty": 0.08,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Bawang Putih",
+            "qty": 0.01,
+            "unit": "kg"
+          },
+          {
+            "ingredient": "Bawang Merah",
+            "qty": 0.015,
+            "unit": "kg"
+          }
+        ]
+      }
+    ],
+    "recipeOverrides": {},
+    "stockouts": {},
+    "training": {
+      "day": 3,
+      "lastTrainedAt": "2026-10-04T16:22:15.776Z",
+      "lastStatus": "success",
+      "lastResult": {
+        "status": "success",
+        "base_model": "active_model.model",
+        "output_model": "active_model.model",
+        "rows_used": 18,
+        "rounds": 10,
+        "mae_before": 9.61,
+        "mae_after": 9.61,
+        "improved": true,
+        "trained_at": "2026-10-04T23:22:15"
+      }
+    },
+    "transactions": [
+      {
+        "id": "TRX-1791130184650",
+        "created_at": "2026-10-04T16:09:44.650Z",
+        "lines": [
+          {
+            "item_id": "P07",
+            "name": "Ayam Geprek",
+            "unit_price": 22000,
+            "qty": 1,
+            "subtotal": 22000
+          },
+          {
+            "item_id": "P08",
+            "name": "Es Teh Manis",
+            "unit_price": 8000,
+            "qty": 1,
+            "subtotal": 8000
+          }
+        ],
+        "units": 2,
+        "subtotal": 30000,
+        "tax": 3000,
+        "total": 33000
+      },
+      {
+        "id": "TRX-1791130114179",
+        "created_at": "2026-10-04T16:08:34.179Z",
+        "lines": [
+          {
+            "item_id": "P02",
+            "name": "Mie Goreng Ayam",
+            "unit_price": 22000,
+            "qty": 1,
+            "subtotal": 22000
+          },
+          {
+            "item_id": "P03",
+            "name": "Nasi Kuning",
+            "unit_price": 18000,
+            "qty": 1,
+            "subtotal": 18000
+          }
+        ],
+        "units": 2,
+        "subtotal": 40000,
+        "tax": 4000,
+        "total": 44000
+      },
+      {
+        "id": "TRX-1791022565128"
+      }
+    ],
+    "location": {
+      "city": "Surakarta",
+      "province": "Central Java",
+      "lat": -7.5755,
+      "lon": 110.8243,
+      "timezone": "Asia/Jakarta"
+    },
+    "dailySales": {
+      "date": "2026-10-04",
+      "updated_at": "2026-10-04T16:09:44.651Z",
+      "entries": [
+        {
+          "item_id": "P07",
+          "item_name": "Ayam Geprek",
+          "units_sold": 1,
+          "stockout": false,
+          "_id": "6ac27a48e04ca5f57496c202"
+        },
+        {
+          "item_id": "P08",
+          "item_name": "Es Teh Manis",
+          "units_sold": 1,
+          "stockout": false,
+          "_id": "6ac27a48e04ca5f57496c203"
+        }
+      ]
+    }
+  },
+  {
+    "_id": "6abe745f9a59551d6c21bb47",
+    "storeName": "Nusantara Gus",
+    "storeId": "STR-62F1",
+    "initialized": true,
+    "menu": [
+      {
+        "itemId": "M-A4DC",
+        "name": "Es Teh Manis",
+        "category": "minuman",
+        "categoryLabel": "Drinks",
+        "price": 3000,
+        "icon": "",
+        "recipe": []
+      }
+    ],
+    "products": [],
+    "createdAt": "2026-10-01T14:55:27.253Z",
+    "updatedAt": "2026-10-04T15:38:57.522Z",
+    "__v": 6,
+    "recipeOverrides": {},
+    "stockouts": {},
+    "training": {
+      "day": 0,
+      "lastStatus": "",
+      "lastTrainedAt": ""
+    },
+    "transactions": [],
+    "location": {
+      "city": "Yogyakarta",
+      "province": "DI Yogyakarta",
+      "lat": -7.7956,
+      "lon": 110.3695,
+      "timezone": "Asia/Jakarta"
+    }
+  }
+]

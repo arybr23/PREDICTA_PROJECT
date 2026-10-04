@@ -109,7 +109,7 @@ function FirmOptions() {
               Register your own firm
             </h3>
             <p className="mt-1 text-sm text-text-muted">
-              Create a new firm and become its admin.
+              Create a new firm and become its manager.
             </p>
           </div>
 

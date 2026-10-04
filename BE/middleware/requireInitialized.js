@@ -14,8 +14,8 @@ function parseCookies(header) {
  * Guards the data endpoints (forecast, catalog, sales, recipes, pos).
  *
  * The caller must have a valid session and must have completed the explicit
- * workspace initialisation step. Store selection is enforced in the frontend
- * only — these endpoints stay shared across every store of the firm.
+ * workspace initialisation step. Which store the data belongs to is enforced
+ * afterwards by middleware/storeScope: every data request names one store.
  *
  *   401 — no session / unknown session
  *   403 — logged in, but the workspace is not initialised yet

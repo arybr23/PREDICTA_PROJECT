@@ -42,6 +42,7 @@ function MenuContent() {
   const remove = useMutation();
 
   const [name, setName] = useState("");
+  const [itemId, setItemId] = useState("");
   const [category, setCategory] = useState(CATEGORIES[0].key);
   const [price, setPrice] = useState("");
   const [icon, setIcon] = useState("");
@@ -94,6 +95,7 @@ function MenuContent() {
     const { ok, error: err } = await create.run(() =>
       api.storeMenuCreate(selectedStoreId, {
         name: name.trim(),
+        itemId: itemId.trim() || undefined,
         category,
         price: Number(price) || 0,
         icon: icon.trim(),
@@ -101,6 +103,7 @@ function MenuContent() {
     );
     if (ok) {
       setName("");
+      setItemId("");
       setPrice("");
       setIcon("");
       menu.reload();
@@ -201,6 +204,19 @@ function MenuContent() {
           </select>
         </div>
         <div className="min-w-36">
+          <label className="mb-1 block text-sm font-medium text-text-main">
+            Item ID
+          </label>
+          <input
+            type="text"
+            value={itemId}
+            onChange={(e) => setItemId(e.target.value)}
+            className={inputClass}
+            placeholder="auto"
+            aria-describedby="item-id-hint"
+          />
+        </div>
+        <div className="min-w-36">
           <label className="mb-1 block text-sm font-medium text-text-main">Price</label>
           <input
             type="number"
@@ -228,6 +244,10 @@ function MenuContent() {
         >
           {create.pending ? "Adding…" : "Add item"}
         </button>
+        <p id="item-id-hint" className="w-full text-xs text-text-muted">
+          Optional. Set it to the code your POS uses and imported sales files
+          will match this item automatically; leave blank to generate one.
+        </p>
       </form>
 
       {menu.loading && <LoadingBlock label="Loading menu…" />}

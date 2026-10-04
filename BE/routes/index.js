@@ -9,7 +9,10 @@ const account = require("./account");
 const firm = require("./firm");
 const stores = require("./stores");
 const python = require("../services/python");
+const supabase = require("../services/supabase");
+const { healthCheck: mongoHealth } = require("../config/db");
 const requireInitialized = require("../middleware/requireInitialized");
+const requireStore = require("../middleware/storeScope");
 
 const MONGO_STATES = {
   0: "disconnected",
@@ -24,17 +27,20 @@ router.get("/", (req, res) => {
     status: "success",
     endpoints: [
       "GET  /api/health",
-      "GET  /api/catalog",
-      "GET  /api/forecast/tomorrow",
-      "GET  /api/forecast/metrics",
-      "POST /api/sales/entry",
-      "GET  /api/sales/history",
-      "GET  /api/recipes/mapping",
-      "POST /api/recipes/mapping",
-      "GET  /api/pos/menu",
-      "POST /api/pos/checkout",
-      "PATCH /api/pos/item-status",
-      "GET  /api/pos/transactions",
+      "GET  /api/catalog?storeId=",
+      "GET  /api/forecast/tomorrow?storeId=",
+      "GET  /api/forecast/metrics?storeId=",
+      "POST /api/sales/entry?storeId=",
+      "GET  /api/sales/history?storeId=",
+      "GET  /api/sales/daily?storeId=&date=",
+      "GET  /api/sales/weather?storeId=&date=",
+      "POST /api/sales/import?storeId=",
+      "GET  /api/recipes/mapping?storeId=",
+      "POST /api/recipes/mapping?storeId=",
+      "GET  /api/pos/menu?storeId=",
+      "POST /api/pos/checkout?storeId=",
+      "PATCH /api/pos/item-status?storeId=",
+      "GET  /api/pos/transactions?storeId=",
       "GET  /api/account/profile",
       "GET  /api/account/stores",
       "GET  /api/account/stock",
@@ -47,6 +53,7 @@ router.get("/", (req, res) => {
       "POST /api/firm/:firmId/reject",
       "GET  /api/stores",
       "POST /api/stores",
+      "GET  /api/stores/locations",
       "PATCH /api/stores/:storeId",
       "DELETE /api/stores/:storeId",
       "POST /api/stores/:storeId/initialize",
@@ -58,33 +65,62 @@ router.get("/", (req, res) => {
   });
 });
 
-router.get("/health", (req, res) => {
+router.get("/health", async (req, res) => {
+  const mongo = await mongoHealth();
   res.status(200).json({
     status: "ok",
     message: "Backend server is running",
     timestamp: new Date().toISOString(),
     python: python.pythonInfo(),
-    mongo: MONGO_STATES[mongoose.connection.readyState] || "unknown",
-    persistence: "json-file",
+    mongo: {
+      state: MONGO_STATES[mongoose.connection.readyState] || "unknown",
+      connected: mongo.connected,
+      mode: mongo.mode,
+      dbName: mongo.dbName,
+    },
+    supabase: supabase.status(),
+    persistence: "mongodb",
   });
 });
 
-router.get("/catalog", requireInitialized, (req, res) => {
-  const { PRODUCTS, CATEGORY_LABEL } = require("../config/catalog");
-  res.status(200).json({
-    status: "success",
-    count: PRODUCTS.length,
-    categories: CATEGORY_LABEL,
-    items: PRODUCTS.map((product) => ({
-      item_id: product.itemId,
-      name: product.name,
-      category: product.category,
-      category_label: CATEGORY_LABEL[product.category],
-      price: product.price,
-      icon: product.icon,
-      recipe: product.recipe,
-    })),
-  });
+router.get("/catalog", requireInitialized, async (req, res) => {
+  try {
+    // The catalog is the selected store's own menu, never the shared one.
+    const ctx = await requireStore(req, res);
+    if (!ctx) return;
+
+    const { CATEGORY_LABEL } = require("../config/catalog");
+    // The sold-out flag comes from the same store.stockouts map the POS menu
+    // reads, so the Data Entry toggles and the Cashier toggles cannot disagree.
+    const soldOut = ctx.store.stockouts;
+    const isSoldOut = (itemId) => {
+      if (!soldOut) return false;
+      if (typeof soldOut.get === "function") return Boolean(soldOut.get(itemId));
+      return Boolean(soldOut[itemId]);
+    };
+
+    const items = (ctx.store.menu || []).map((item) => ({
+      item_id: item.itemId,
+      name: item.name,
+      category: item.category,
+      category_label:
+        item.categoryLabel || CATEGORY_LABEL[item.category] || item.category,
+      price: item.price,
+      icon: item.icon,
+      stockout: isSoldOut(item.itemId),
+      recipe: item.recipe || [],
+    }));
+
+    res.status(200).json({
+      status: "success",
+      storeId: ctx.store.storeId,
+      count: items.length,
+      categories: CATEGORY_LABEL,
+      items,
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
 });
 
 router.use("/forecast", forecast);

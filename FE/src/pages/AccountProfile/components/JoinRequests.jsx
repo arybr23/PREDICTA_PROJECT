@@ -4,7 +4,7 @@ import { useApi, useMutation } from "../../../lib/useApi";
 import { ErrorBlock, LoadingBlock } from "../../../globalComponents/AsyncState";
 
 /**
- * Admin-only panel on the Account page: everyone currently asking to join the
+ * Manager-only panel on the Account page: everyone currently asking to join the
  * firm, with an accept / reject action per request.
  */
 function JoinRequests({ firmId }) {

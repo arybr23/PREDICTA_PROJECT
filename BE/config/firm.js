@@ -23,7 +23,7 @@ const ACCOUNT = {
   userId: "USR-0001",
   name: "John Doe",
   email: "john.doe@bistronusantara.id",
-  role: "admin",
+  role: "manager",
   firmId: FIRM.firmId,
   avatarUrl: "https://i.pravatar.cc/150?img=3",
 };

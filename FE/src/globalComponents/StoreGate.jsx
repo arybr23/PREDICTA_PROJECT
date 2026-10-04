@@ -13,7 +13,7 @@ function StoreGate({ title, subtitle, children }) {
   const { user } = useAuth();
   const { stores, loading, selectedStoreId, selectedStore } = useStores();
 
-  const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager";
 
   if (selectedStoreId && selectedStore && selectedStore.initialized) {
     return children;
@@ -28,10 +28,10 @@ function StoreGate({ title, subtitle, children }) {
     description = "Checking which stores your firm has.";
   } else if (!stores.length) {
     heading = "No stores yet";
-    description = isAdmin
+    description = isManager
       ? "Add your firm's first store, then set it up to unlock its data."
-      : "Your firm has no stores yet. Ask an admin to add one.";
-    action = isAdmin ? (
+      : "Your firm has no stores yet. Ask your manager to add one.";
+    action = isManager ? (
       <Link
         to="/stores"
         className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
@@ -44,10 +44,10 @@ function StoreGate({ title, subtitle, children }) {
     description = "Choose a store from the top bar to continue.";
   } else {
     heading = `${selectedStore.storeName} is not set up yet`;
-    description = isAdmin
+    description = isManager
       ? "Add its menu and sales, or use the default demo data, to unlock this store."
-      : "Ask your firm's admin to set up this store.";
-    action = isAdmin ? (
+      : "Ask your firm's manager to set up this store.";
+    action = isManager ? (
       <Link
         to="/stores"
         className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"

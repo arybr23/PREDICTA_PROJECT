@@ -24,17 +24,21 @@ function Stores() {
 function StoresContent() {
   const { refreshStores } = useStores();
   const stores = useApi(() => api.stores(), []);
+  const locations = useApi(() => api.storeLocations(), []);
   const add = useMutation();
   const rename = useMutation();
   const remove = useMutation();
   const seed = useMutation();
 
   const [name, setName] = useState("");
+  const [city, setCity] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+  const [editCity, setEditCity] = useState("");
   const [error, setError] = useState(null);
 
   const items = stores.data?.stores || [];
+  const cities = locations.data?.cities || [];
 
   const sync = () => {
     stores.reload();
@@ -44,9 +48,12 @@ function StoresContent() {
   const handleAdd = async (e) => {
     e.preventDefault();
     setError(null);
-    const { ok, error: err } = await add.run(() => api.storeCreate(name.trim()));
+    const { ok, error: err } = await add.run(() =>
+      api.storeCreate(name.trim(), city || undefined),
+    );
     if (ok) {
       setName("");
+      setCity("");
       sync();
     } else {
       setError(err.message);
@@ -57,12 +64,13 @@ function StoresContent() {
     setError(null);
     setEditingId(store.storeId);
     setEditName(store.storeName);
+    setEditCity(store.location?.city || "");
   };
 
   const handleRename = async () => {
     setError(null);
     const { ok, error: err } = await rename.run(() =>
-      api.storeRename(editingId, editName.trim()),
+      api.storeRename(editingId, editName.trim(), editCity || undefined),
     );
     if (ok) {
       setEditingId(null);
@@ -128,6 +136,24 @@ function StoresContent() {
             placeholder="e.g. Bistro Nusantara — Central Park"
           />
         </div>
+        <div className="min-w-48">
+          <label className="mb-1 block text-sm font-medium text-text-main">
+            City
+          </label>
+          <select
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className={inputClass}
+            aria-describedby="city-hint"
+          >
+            <option value="">Not set</option>
+            {cities.map((c) => (
+              <option key={c.city} value={c.city}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
         <button
           type="submit"
           disabled={add.pending || !name.trim()}
@@ -135,6 +161,10 @@ function StoresContent() {
         >
           {add.pending ? "Adding…" : "Add store"}
         </button>
+        <p id="city-hint" className="w-full text-xs text-text-muted">
+          The city decides where this store&rsquo;s weather comes from. Without
+          it, weather cannot be filled in automatically.
+        </p>
       </form>
 
       {stores.loading && <LoadingBlock label="Loading stores…" />}
@@ -165,14 +195,28 @@ function StoresContent() {
                 className="flex items-center justify-between gap-3 rounded-lg border border-border px-4 py-3"
               >
                 {editingId === store.storeId ? (
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                     <input
                       type="text"
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       className={`${inputClass} min-w-0 flex-1 py-1.5`}
                       autoFocus
+                      aria-label="Store name"
                     />
+                    <select
+                      value={editCity}
+                      onChange={(e) => setEditCity(e.target.value)}
+                      className={`${inputClass} w-auto py-1.5`}
+                      aria-label="Store city"
+                    >
+                      <option value="">No city</option>
+                      {cities.map((c) => (
+                        <option key={c.city} value={c.city}>
+                          {c.city}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       type="button"
                       onClick={handleRename}
@@ -205,8 +249,18 @@ function StoresContent() {
                         >
                           {store.initialized ? "Initialised" : "Pending"}
                         </span>
+                        {!store.hasLocation && (
+                          <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent-dark">
+                            No city
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-text-muted">{store.storeId}</p>
+                      <p className="text-xs text-text-muted">
+                        {store.storeId}
+                        {store.location?.city
+                          ? ` · ${store.location.city}, ${store.location.province}`
+                          : " · weather unavailable"}
+                      </p>
                     </div>
                     <div className="flex shrink-0 gap-2">
                       {!store.initialized && (
@@ -224,7 +278,7 @@ function StoresContent() {
                         onClick={() => startEdit(store)}
                         className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-text-main transition-colors hover:bg-bg"
                       >
-                        Rename
+                        {store.hasLocation ? "Rename" : "Set city"}
                       </button>
                       <button
                         type="button"

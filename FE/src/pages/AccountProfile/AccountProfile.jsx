@@ -31,7 +31,7 @@ function AccountProfile() {
         <FirmOptions />
       )}
 
-      {hasFirm && user?.role === "admin" && (
+      {hasFirm && user?.role === "manager" && (
         <JoinRequests firmId={user.firmId} />
       )}
     </div>

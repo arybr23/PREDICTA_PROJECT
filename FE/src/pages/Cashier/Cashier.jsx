@@ -1,17 +1,21 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../lib/api";
 import { useApi, useMutation } from "../../lib/useApi";
+import { useStores } from "../../lib/StoreContext";
 import { formatCurrency } from "../../lib/format";
 import { ErrorBlock, LoadingBlock } from "../../globalComponents/AsyncState";
 import WorkspaceGate from "../../globalComponents/WorkspaceGate";
 import StoreGate from "../../globalComponents/StoreGate";
+import EmptyState from "../../globalComponents/EmptyState";
 import CategoryNav from "./components/CategoryNav";
-import MenuGrid from "./components/MenuGrid";
+import MenuList from "./components/MenuList";
 import OrderReceipt from "./components/OrderReceipt";
-import StockoutFlag from "./components/StockoutFlag";
 import CheckoutBar from "./components/CheckoutBar";
 
 function Cashier() {
+  const { selectedStoreId } = useStores();
+
   return (
     <WorkspaceGate
       title="Point of Sale"
@@ -20,18 +24,21 @@ function Cashier() {
       emptyDescription="Menu items, categories, and checkout will appear here once your workspace is set up."
     >
       <StoreGate title="Point of Sale" subtitle="Select items and manage orders">
-        <CashierContent />
+        {/* Remounting per store drops any cart or flags from the previous one. */}
+        <CashierContent key={selectedStoreId} />
       </StoreGate>
     </WorkspaceGate>
   );
 }
 
 function CashierContent() {
-  const menu = useApi(() => api.posMenu(), []);
+  const { selectedStoreId, selectedStore } = useStores();
+  const menu = useApi(() => api.posMenu(selectedStoreId), [selectedStoreId]);
   const checkout = useMutation();
   const [activeCategory, setActiveCategory] = useState("All Items");
   const [cart, setCart] = useState([]);
   const [stockOverrides, setStockOverrides] = useState({});
+  const [pendingStockoutId, setPendingStockoutId] = useState(null);
   const [receipt, setReceipt] = useState(null);
   const [statusError, setStatusError] = useState(null);
 
@@ -77,18 +84,25 @@ function CashierContent() {
   const toggleStockout = async (itemId) => {
     const next = !stockouts[itemId];
     setStockOverrides((prev) => ({ ...prev, [itemId]: next }));
+    setPendingStockoutId(itemId);
     setStatusError(null);
     try {
-      await api.setItemStatus(itemId, next);
+      await api.setItemStatus(selectedStoreId, itemId, next);
+      // The switch is the same store.stockouts flag the Data Entry page edits,
+      // so a change here is what that page reads when it next loads.
     } catch (err) {
       setStockOverrides((prev) => ({ ...prev, [itemId]: !next }));
       setStatusError(err.message);
+    } finally {
+      setPendingStockoutId(null);
     }
   };
 
   const handleCheckout = async () => {
     const items = cart.map((c) => ({ item_id: c.item_id, qty: c.qty }));
-    const { ok, value } = await checkout.run(() => api.checkout(items));
+    const { ok, value } = await checkout.run(() =>
+      api.checkout(selectedStoreId, items)
+    );
     if (ok) {
       setReceipt(value.transaction);
       setCart([]);
@@ -105,7 +119,7 @@ function CashierContent() {
           </p>
         </div>
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-          POS Active
+          {selectedStore?.storeName || "POS Active"}
         </span>
       </div>
 
@@ -122,6 +136,13 @@ function CashierContent() {
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-text-main">
           <span className="font-semibold">Order {receipt.id} confirmed.</span>{" "}
           {receipt.units} items · {formatCurrency(receipt.total)}
+          <span className="ml-2 text-text-muted">
+            Recorded in today&rsquo;s sales — publish it from the{" "}
+            <Link to="/data-entry" className="font-medium text-primary underline">
+              Data Entry
+            </Link>{" "}
+            page.
+          </span>
           <button
             type="button"
             onClick={() => setReceipt(null)}
@@ -135,22 +156,28 @@ function CashierContent() {
       {menu.loading && <LoadingBlock label="Loading menu…" />}
       {menu.error && <ErrorBlock error={menu.error} onRetry={menu.reload} />}
 
-      {menu.data && (
+      {menu.data && !menu.data.items.length && (
+        <EmptyState
+          title="No menu yet"
+          description={`${selectedStore?.storeName || "This store"} has no menu items yet. A manager can add them from the Stores page.`}
+        />
+      )}
+
+      {menu.data && menu.data.items.length > 0 && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
           <div className="space-y-5">
             <CategoryNav
               activeCategory={activeCategory}
               onCategoryChange={setActiveCategory}
             />
-            <MenuGrid
+            {/* The sold-out switch is on each row, so this one list covers both
+                the menu and the mid-shift stockout flagging. */}
+            <MenuList
               items={filtered}
               stockouts={stockouts}
               onAddToCart={addToCart}
-            />
-            <StockoutFlag
-              items={menu.data.items}
-              stockouts={stockouts}
               onToggleStockout={toggleStockout}
+              pendingItemId={pendingStockoutId}
             />
           </div>
 

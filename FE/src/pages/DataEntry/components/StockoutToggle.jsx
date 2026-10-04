@@ -14,7 +14,9 @@ function StockoutToggle({ items = [], stockouts = {}, onToggle }) {
         )}
       </div>
       <p className="mb-4 text-sm text-text-muted">
-        Flag items that ran out of stock to capture un-censored demand.
+        Flag items that ran out of stock to capture un-censored demand. This is
+        the same switch as the one on the Cashier page &mdash; changing it in
+        either place updates both.
       </p>
 
       <div className="max-h-96 space-y-3 overflow-y-auto pr-1">

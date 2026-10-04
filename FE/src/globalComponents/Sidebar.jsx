@@ -32,7 +32,7 @@ const navItems = [
   {
     to: "/stores",
     label: "Stores",
-    adminOnly: true,
+    managerOnly: true,
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 9 4.5 3.75h15L21.75 9M4.5 9v10.5a.75.75 0 0 0 .75.75h13.5a.75.75 0 0 0 .75-.75V9m-18 0h18M9.75 19.5v-5.25h4.5v5.25" />
@@ -42,7 +42,7 @@ const navItems = [
   {
     to: "/menu",
     label: "Menu",
-    adminOnly: true,
+    managerOnly: true,
     icon: (
       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
@@ -71,7 +71,7 @@ function Sidebar() {
 
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navItems
-          .filter((item) => !item.adminOnly || user?.role === "admin")
+          .filter((item) => !item.managerOnly || user?.role === "manager")
           .map((item) => (
           <NavLink
             key={item.to}

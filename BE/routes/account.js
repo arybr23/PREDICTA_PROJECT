@@ -7,7 +7,6 @@ const Firm = require("../models/Firms");
 const { ACCOUNT, FIRM, STORES } = require("../config/firm");
 const { computeIngredients } = require("../config/catalog");
 const python = require("../services/python");
-const store = require("../services/store");
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -75,7 +74,7 @@ router.post("/register", async (req, res) => {
       firm.accountRequest.push({
         email,
         name,
-        role: "user",
+        role: "employee",
         storeId: storeId || "",
       });
       await firm.save();
@@ -307,7 +306,7 @@ router.post("/firm-request", async (req, res) => {
     firm.accountRequest.push({
       email: account.email,
       name: account.name,
-      role: "user",
+      role: "employee",
       storeId: storeId || "",
     });
     await firm.save();

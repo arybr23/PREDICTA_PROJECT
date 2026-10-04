@@ -18,12 +18,12 @@ FEATURE_COLUMNS = [
     # Stockout lags
     "lag_1_stockout", "lag_7_stockout", "stockout_last_7",
     # Calendar
-    "date.is_weekend", "is_holiday", "date.month", "date.day",
+    "date.dayOfTheWeek", "is_holiday", "date.month", "date.day",
     "hijri_month", "hijri_day",
     # Weather + temperature
     "weather", "temperature",
     # Product
-    "item_id",
+    "item_id", "item_type",
 ]
 
 TARGET_COLUMN = "units_sold"
@@ -62,8 +62,14 @@ def _load_label_maps(path: str) -> dict:
         return json.load(f)
 
 
-def _prep_common(df: pd.DataFrame, label_maps: dict) -> pd.DataFrame:
-    """Shared preprocessing: rename, label-encode, drop NaN lag rows."""
+def _prep_common(df: pd.DataFrame, label_maps: dict, fill_missing: bool = False) -> pd.DataFrame:
+    """Shared preprocessing: rename, label-encode, resolve NaN lag rows.
+
+    The global pipeline drops rows whose lag windows are not populated yet.
+    Store histories start empty and grow one day at a time, so there the lags
+    are padded with 0 instead — the same fallback predict.py uses when it
+    builds a feature row, which keeps training and scoring aligned.
+    """
     rename_map = {
         "lag_1_units":  "lag_1",
         "lag_2_units":  "lag_2",
@@ -74,7 +80,25 @@ def _prep_common(df: pd.DataFrame, label_maps: dict) -> pd.DataFrame:
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
     df = _apply_label_encoding(df, label_maps)
 
+    # Expose weekday as dayOfTheWeek and category as item_type for the model.
+    if "date.weekday" in df.columns:
+        df = df.rename(columns={"date.weekday": "date.dayOfTheWeek"})
+    if "item_category" in df.columns:
+        df = df.rename(columns={"item_category": "item_type"})
+
     lag_cols = [c for c in df.columns if c.startswith("lag_") or c.startswith("rolling_")]
+    if fill_missing:
+        # Lag windows are padded like predict.py does, and any label-encoded
+        # column left NaN by a missing optional value (weather, temperature)
+        # falls back to code 0 rather than leaking a nullable int downstream.
+        encode_cols = [c for c in label_maps if c in df.columns]
+        optional = [c for c in ("temperature",) if c in df.columns]
+        df[lag_cols] = df[lag_cols].fillna(0)
+        df[encode_cols] = df[encode_cols].fillna(0).astype("int64")
+        df[optional] = df[optional].fillna(0)
+        print(f"  Padded lag/rolling columns with 0 → {len(df)} rows")
+        return df
+
     before = len(df)
     df = df.dropna(subset=lag_cols).reset_index(drop=True)
     print(f"  Dropped {before - len(df)} NaN rows → {len(df)} rows")
@@ -85,6 +109,7 @@ def build_feature_matrix(
     input_path: str = None,
     output_path: str = None,
     label_map_path: str = None,
+    fill_missing: bool = False,
 ):
     input_path = input_path or os.path.join(RAW_DIR, "historical_sales.csv")
     output_path = output_path or os.path.join(PROCESSED_DIR, "feature_matrix.csv")
@@ -101,7 +126,7 @@ def build_feature_matrix(
     df = df.sort_values(["item_id", "date"]).reset_index(drop=True)
 
     label_maps = _build_label_maps(df)
-    df = _prep_common(df, label_maps)
+    df = _prep_common(df, label_maps, fill_missing=fill_missing)
     _save_label_maps(label_maps, label_map_path)
 
     available_features = [c for c in FEATURE_COLUMNS if c in df.columns]

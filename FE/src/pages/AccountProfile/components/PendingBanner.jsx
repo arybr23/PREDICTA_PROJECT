@@ -11,7 +11,7 @@ function PendingBanner({ firmName, firmId }) {
         <p className="mt-0.5 text-amber-700">
           Your request to join {firmName || "the firm"}
           {firmId ? ` (${firmId})` : ""} is waiting for approval from the firm
-          admin. Predictions, POS, and data entry are already unlocked.
+          manager. Predictions, POS, and data entry are already unlocked.
         </p>
       </div>
     </div>

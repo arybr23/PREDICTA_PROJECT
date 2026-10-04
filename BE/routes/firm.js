@@ -15,10 +15,10 @@ function parseCookies(header) {
 }
 
 /**
- * Session + admin check for the request-management routes.
+ * Session + manager check for the request-management routes.
  * Returns { account, firm }, or sends the error response and returns null.
  */
-async function requireAdminOfFirm(req, res, firmId) {
+async function requireManagerOfFirm(req, res, firmId) {
   const cookies = parseCookies(req.headers.cookie);
   const userId = cookies.session;
 
@@ -33,8 +33,8 @@ async function requireAdminOfFirm(req, res, firmId) {
     return null;
   }
 
-  if (account.firmId !== firmId || account.role !== "admin") {
-    res.status(403).json({ status: "error", message: "Admin access required" });
+  if (account.firmId !== firmId || account.role !== "manager") {
+    res.status(403).json({ status: "error", message: "Manager access required" });
     return null;
   }
 
@@ -90,7 +90,7 @@ router.post("/", async (req, res) => {
     const firm = await Firm.create({
       firmName,
       firmId: "FIRM",
-      members: [{ email: account.email, role: "admin" }],
+      members: [{ email: account.email, role: "manager" }],
     });
 
     firm.firmId = `FIRM-${String(firm._id).slice(-4).toUpperCase()}`;
@@ -102,7 +102,7 @@ router.post("/", async (req, res) => {
     account.firmId = firm.firmId;
     account.pendingFirmId = "";
     account.pendingFirmName = "";
-    account.role = "admin";
+    account.role = "manager";
     await account.save();
 
     // The userId changed, so the old session cookie is no longer valid.
@@ -136,7 +136,7 @@ router.post("/", async (req, res) => {
 });
 
 /**
- * POST /api/firm/:firmId/accept — accept a pending account request (admin only).
+ * POST /api/firm/:firmId/accept — accept a pending account request (manager only).
  * Body: { email }
  */
 router.post("/:firmId/accept", async (req, res) => {
@@ -151,7 +151,7 @@ router.post("/:firmId/accept", async (req, res) => {
   }
 
   try {
-    const ctx = await requireAdminOfFirm(req, res, firmId);
+    const ctx = await requireManagerOfFirm(req, res, firmId);
     if (!ctx) return;
     const { firm } = ctx;
 
@@ -201,7 +201,7 @@ router.post("/:firmId/accept", async (req, res) => {
 });
 
 /**
- * POST /api/firm/:firmId/reject — decline a pending account request (admin only).
+ * POST /api/firm/:firmId/reject — decline a pending account request (manager only).
  * Body: { email }
  *
  * The request is dropped from the firm and the requester's pending flags are
@@ -220,7 +220,7 @@ router.post("/:firmId/reject", async (req, res) => {
   }
 
   try {
-    const ctx = await requireAdminOfFirm(req, res, firmId);
+    const ctx = await requireManagerOfFirm(req, res, firmId);
     if (!ctx) return;
     const { firm } = ctx;
 
@@ -276,7 +276,9 @@ router.get("/", async (req, res) => {
       });
     }
 
-    const firm = await Firm.findOne({ firmName: account.firmName }).lean();
+    const firm = await Firm.findOne(
+      account.firmId ? { firmId: account.firmId } : { firmName: account.firmName },
+    ).lean();
     if (!firm) {
       return res.status(404).json({
         status: "error",
@@ -284,7 +286,7 @@ router.get("/", async (req, res) => {
       });
     }
 
-    if (account.role === "admin") {
+    if (account.role === "manager") {
       return res.status(200).json({
         status: "success",
         firm: {

@@ -7,7 +7,7 @@ const firmsSchema = new mongoose.Schema(
     members: [
       {
         email: { type: String, required: true },
-        role: { type: String, enum: ["admin", "user"], default: "user" },
+        role: { type: String, enum: ["manager", "employee"], default: "employee" },
       },
     ],
     stores: [{ type: String, ref: "Stores" }],
@@ -15,7 +15,7 @@ const firmsSchema = new mongoose.Schema(
       {
         email: { type: String, required: true },
         name: { type: String, required: true },
-        role: { type: String, enum: ["admin", "user"], default: "user" },
+        role: { type: String, enum: ["manager", "employee"], default: "employee" },
         storeId: { type: String, default: "" },
       },
     ],

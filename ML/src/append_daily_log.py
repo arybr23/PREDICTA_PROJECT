@@ -33,15 +33,17 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from calendar_utils import build_calendar_context, parse_date  # noqa: E402
 from dataset_prep import build_feature_matrix  # noqa: E402
+from store_paths import (  # noqa: E402
+    bootstrap_history,
+    encoders_path,
+    feature_matrix_path,
+    history_path,
+)
 
 # Reuse the generator's feature code so stored history and training stay aligned.
 from generate_mock_data import _compute_lag_rolling  # noqa: E402
 
 warnings.filterwarnings("ignore")
-
-SRC_DIR = os.path.dirname(os.path.abspath(__file__))
-ML_DIR = os.path.dirname(SRC_DIR)
-RAW_HISTORY_PATH = os.path.join(ML_DIR, "data", "raw", "historical_sales.csv")
 
 LAG_COLUMNS = [
     "lag_1_units", "lag_2_units", "lag_3_units", "lag_7_units", "lag_14_units",
@@ -129,6 +131,13 @@ def upsert(df, payload):
             "available_inventory": inventory,
         })
 
+        # The store's own menu names the item; a fresh store history has no
+        # template row to inherit them from.
+        if entry.get("item_name"):
+            row["item_name"] = entry["item_name"]
+        if entry.get("item_category"):
+            row["item_category"] = entry["item_category"]
+
         if weather is not None:
             row["weather"] = weather
         if temperature is not None:
@@ -148,15 +157,23 @@ def upsert(df, payload):
 def main():
     parser = argparse.ArgumentParser(description="Append logged sales to history")
     parser.add_argument("payload", nargs="?", help="Path to JSON payload (default: stdin)")
+    parser.add_argument("--store", default=None,
+                        help="Scope the history to one store (default: global history)")
     parser.add_argument("--skip-features", action="store_true",
                         help="Only update history, do not rebuild the feature matrix")
     args = parser.parse_args()
 
-    if not os.path.exists(RAW_HISTORY_PATH):
+    scoped = bool(args.store)
+    raw_path = history_path(args.store)
+
+    if scoped:
+        # The store's very first log creates its own history file.
+        bootstrap_history(raw_path)
+    elif not os.path.exists(raw_path):
         fail("Historical sales data missing", hint="Run generate_mock_data.py first")
 
     payload = load_payload(args.payload)
-    df = pd.read_csv(RAW_HISTORY_PATH)
+    df = pd.read_csv(raw_path)
     df = df.sort_values(["item_id", "date"]).reset_index(drop=True)
 
     df, date_str, touched = upsert(df, payload)
@@ -173,11 +190,18 @@ def main():
     df = df.merge(_compute_lag_rolling(df.copy()), on=["item_id", "date"], how="left")
     df = df.sort_values(["item_id", "date"]).reset_index(drop=True)
 
-    df.to_csv(RAW_HISTORY_PATH, index=False)
+    df.to_csv(raw_path, index=False)
 
     feature_rows = None
     if not args.skip_features:
-        built = build_feature_matrix()
+        built = build_feature_matrix(
+            input_path=raw_path,
+            output_path=feature_matrix_path(args.store),
+            label_map_path=encoders_path(args.store),
+            # A store history starts at zero days: pad the missing lag windows
+            # instead of dropping the only rows it has.
+            fill_missing=scoped,
+        )
         feature_rows = int(len(built)) if built is not None else None
 
     output = {

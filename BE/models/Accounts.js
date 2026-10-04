@@ -10,7 +10,7 @@ const accountsSchema = new mongoose.Schema(
     firmId: { type: String, default: "" },
     pendingFirmId: { type: String, default: "" },
     pendingFirmName: { type: String, default: "" },
-    role: { type: String, enum: ["admin", "user"], default: "user" },
+    role: { type: String, enum: ["manager", "employee"], default: "employee" },
     initialized: { type: Boolean, default: false },
   },
   { timestamps: true },

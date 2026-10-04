@@ -25,10 +25,8 @@ import lightgbm as lgb
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from calendar_utils import build_calendar_context, parse_date  # noqa: E402
+from store_paths import history_path  # noqa: E402
 from predict import (  # noqa: E402
-    ENCODERS_PATH,
-    MODELS_DIR,
-    RAW_HISTORY_PATH,
     build_row,
     load_encoders,
     resolve_model,
@@ -42,10 +40,10 @@ FEATURES = [
     "rolling_7_mean", "rolling_7_std",
     "rolling_14_mean", "rolling_14_std",
     "lag_1_stockout", "lag_7_stockout", "stockout_last_7",
-    "date.is_weekend", "is_holiday", "date.month", "date.day",
+    "date.dayOfTheWeek", "is_holiday", "date.month", "date.day",
     "hijri_month", "hijri_day",
     "weather", "temperature",
-    "item_id",
+    "item_id", "item_type",
 ]
 
 
@@ -59,15 +57,26 @@ def fail(message, **extra):
 def main():
     parser = argparse.ArgumentParser(description="Backtest forecast vs naive baseline")
     parser.add_argument("--days", type=int, default=30, help="Number of recent days to test")
-    parser.add_argument("--model", default=None, help="Model filename in ML/models")
+    parser.add_argument("--model", default=None,
+                        help="Model filename in the store's ML/salesHistory/<id>/models/ dir (or ML/models/ for offline models)")
+    parser.add_argument("--store", default=None,
+                        help="Backtest one store's own history and model")
     args = parser.parse_args()
 
-    if not os.path.exists(RAW_HISTORY_PATH):
-        fail("Historical sales data missing")
+    # A store history grows one day at a time, so it backtests over whatever it
+    # has instead of demanding the offline dataset's 20+ day cushion.
+    min_dates = 3 if args.store else args.days + 20
+    min_prior = 3 if args.store else 15
 
-    model_path, model_name = resolve_model(args.model)
-    encoders = load_encoders()
+    raw_path = history_path(args.store)
+    if not os.path.exists(raw_path):
+        fail(f"No sales history for store '{args.store}'" if args.store
+             else "Historical sales data missing")
+
+    model_path, model_name = resolve_model(args.model, args.store)
+    encoders = load_encoders(args.store)
     item_encoding = encoders.get("item_id", {})
+    category_encoding = encoders.get("item_category", {})
     weather_map = encoders.get("weather", {})
 
     try:
@@ -75,11 +84,11 @@ def main():
     except Exception as exc:  # noqa: BLE001
         fail(f"Failed to load model {model_name}: {exc}")
 
-    df = pd.read_csv(RAW_HISTORY_PATH)
+    df = pd.read_csv(raw_path)
     df = df.sort_values(["item_id", "date"]).reset_index(drop=True)
 
     all_dates = sorted(df["date"].unique())
-    if len(all_dates) < args.days + 20:
+    if len(all_dates) < min_dates:
         fail("Not enough history to benchmark")
 
     test_dates = all_dates[-args.days:]
@@ -99,12 +108,13 @@ def main():
         stockouts = history["stockout_flag"].astype(float).tolist()
         weathers = history["weather"].tolist()
         temps = history["temperature"].astype(float).tolist()
+        categories = history["item_category"].tolist() if "item_category" in history.columns else []
 
         index_by_date = {d: i for i, d in enumerate(dates)}
 
         for target in test_dates:
             i = index_by_date.get(target)
-            if i is None or i < 15:
+            if i is None or i < min_prior:
                 continue
 
             prior_units = units[:i]
@@ -113,15 +123,22 @@ def main():
 
             ctx = build_calendar_context(parse_date(target))
             weather_code = weather_map.get(weathers[i], list(weather_map.values())[0] if weather_map else 0)
+            temp = temps[i]
+            if not np.isfinite(temp):
+                temp = 0.0
+
+            cat = categories[i] if categories else None
+            type_code = category_encoding.get(cat, 0) if cat else 0
 
             rows.append(
                 build_row(
                     prior_units,
                     prior_stockouts,
                     int(code),
+                    int(type_code),
                     ctx,
                     weather_code,
-                    temps[i],
+                    temp,
                 )
             )
             actuals.append(actual)

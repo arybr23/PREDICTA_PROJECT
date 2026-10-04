@@ -24,7 +24,7 @@ function LoadingScreen() {
 
 function AuthenticatedApp() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isManager = user?.role === "manager";
 
   return (
     <BrowserRouter>
@@ -39,11 +39,11 @@ function AuthenticatedApp() {
               <Route path="/cashier" element={<Cashier />} />
               <Route
                 path="/stores"
-                element={isAdmin ? <Stores /> : <Navigate to="/" replace />}
+                element={isManager ? <Stores /> : <Navigate to="/" replace />}
               />
               <Route
                 path="/menu"
-                element={isAdmin ? <Menu /> : <Navigate to="/" replace />}
+                element={isManager ? <Menu /> : <Navigate to="/" replace />}
               />
               <Route path="/account" element={<AccountProfile />} />
             </Routes>
