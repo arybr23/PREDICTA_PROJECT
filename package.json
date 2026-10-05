@@ -11,6 +11,8 @@
     "ml:setup": "cd ML && python3 -m venv venv && ./venv/bin/pip install -r requirements.txt",
     "ml:api": "cd ML && ./venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 5001",
     "ml:api:dev": "cd ML && ./venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 5001 --reload",
+    "ml:seed": "cd ML && ./venv/bin/modal run modal_app.py::seed",
+    "ml:deploy": "cd ML && ./venv/bin/modal deploy modal_app.py",
     "ml:generate": "cd ML && ./venv/bin/python src/generate_mock_data.py",
     "ml:prep": "cd ML && ./venv/bin/python src/dataset_prep.py",
     "ml:train": "cd ML && ./venv/bin/python src/train_multiple_models_complete.py",

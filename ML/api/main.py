@@ -1,9 +1,12 @@
 """
 FastAPI service that exposes the ML pipeline as HTTP endpoints.
 
-Run:
+Run locally:
     npm run ml:api          (from the repo root; ml:api:dev adds --reload)
     cd ML && ./venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 5001
+
+Run on Modal (see ML/modal_app.py):
+    npm run ml:seed && npm run ml:deploy
 
 The Node.js backend (BE/services/python.js) calls these endpoints when
 ML_API_URL points here, so the Python environment stays warm instead of being
@@ -14,11 +17,17 @@ Contract: ML scripts print one JSON object on stdout. Whether it says
 "status": "success" or "status": "error", it is returned as-is at HTTP 200 —
 the caller in BE decides what the error means. Only a script that could not be
 run to a usable answer (crash, traceback, timeout) produces a 500.
+
+Security: when the ML_API_KEY env var is set (it comes from the Modal secret),
+every request except /health must carry a matching X-ML-Key header — the
+*.modal.run URL is otherwise public. Locally the variable is unset and nothing
+is enforced.
 """
 
 import json
 import os
 import subprocess
+import sys
 from typing import Optional
 
 from fastapi import FastAPI
@@ -40,7 +49,9 @@ def _resolve_python() -> str:
         return os.environ["PYTHON_BIN"]
     if os.path.exists(VENV_PYTHON):
         return VENV_PYTHON
-    return "python3"
+    # On Modal there is no venv: run the scripts with the very interpreter that
+    # is serving this API, so they see the same installed packages.
+    return sys.executable
 
 
 PYTHON = _resolve_python()
@@ -178,6 +189,19 @@ class RebuildRequest(BaseModel):
 # ---------------------------------------------------------------------------
 
 app = FastAPI(title="PREDICTA ML API", version="1.0.0")
+
+API_KEY = os.environ.get("ML_API_KEY", "").strip()
+
+
+@app.middleware("http")
+async def require_api_key(request, call_next):
+    if API_KEY and request.url.path != "/health":
+        if request.headers.get("x-ml-key", "") != API_KEY:
+            return JSONResponse(
+                status_code=401,
+                content={"status": "error", "message": "Missing or invalid X-ML-Key header"},
+            )
+    return await call_next(request)
 
 
 @app.exception_handler(ScriptError)

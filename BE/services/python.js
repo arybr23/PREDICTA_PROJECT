@@ -19,6 +19,10 @@
  *
  * Environment:
  *   ML_API_URL=http://127.0.0.1:5001   (optional, unset = subprocess mode)
+ *   ML_API_KEY=<shared secret>          (sent as X-ML-Key; required when the
+ *                                        service runs on Modal, where the
+ *                                        *.modal.run URL would otherwise be
+ *                                        public. Unset = no header sent.)
  */
 
 const { spawn } = require("node:child_process");
@@ -30,6 +34,7 @@ const SRC_DIR = path.join(ML_DIR, "src");
 const VENV_PYTHON = path.join(ML_DIR, "venv", "bin", "python");
 
 const ML_API_URL = (process.env.ML_API_URL || "").replace(/\/$/, "");
+const ML_API_KEY = (process.env.ML_API_KEY || "").trim();
 const USE_HTTP = Boolean(ML_API_URL);
 
 const DEFAULT_TIMEOUT_MS = 60_000;
@@ -65,6 +70,12 @@ function markUnreachable(err) {
   return err;
 }
 
+// The shared secret the Modal deployment requires (401 without it). Absent
+// locally, where the service enforces nothing.
+function mlHeaders(extra = {}) {
+  return ML_API_KEY ? { ...extra, "X-ML-Key": ML_API_KEY } : extra;
+}
+
 async function httpPost(endpoint, body, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const url = `${ML_API_URL}${endpoint}`;
   const controller = new AbortController();
@@ -73,7 +84,7 @@ async function httpPost(endpoint, body, timeoutMs = DEFAULT_TIMEOUT_MS) {
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: mlHeaders({ "Content-Type": "application/json" }),
       body: JSON.stringify(body),
       signal: controller.signal,
     });
@@ -111,6 +122,7 @@ async function httpGet(endpoint, timeoutMs = DEFAULT_TIMEOUT_MS) {
   try {
     const res = await fetch(url, {
       method: "GET",
+      headers: mlHeaders(),
       signal: controller.signal,
     });
     clearTimeout(timer);
@@ -413,7 +425,7 @@ async function rebuildStoreHistory({ storeId, weatherFile, menuFile, skipFeature
  */
 async function pythonInfo() {
   if (USE_HTTP) {
-    const info = { mode: "http", mlApiUrl: ML_API_URL, reachable: false };
+    const info = { mode: "http", mlApiUrl: ML_API_URL, apiKey: Boolean(ML_API_KEY), reachable: false };
     try {
       const health = await httpGet("/health", 3000);
       info.reachable = true;
