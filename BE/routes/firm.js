@@ -3,6 +3,7 @@ const router = express.Router();
 
 const Firm = require("../models/Firms");
 const Account = require("../models/Accounts");
+const { setSessionCookie } = require("../services/cookies");
 
 function parseCookies(header) {
   const cookies = {};
@@ -106,10 +107,7 @@ router.post("/", async (req, res) => {
     await account.save();
 
     // The userId changed, so the old session cookie is no longer valid.
-    res.setHeader(
-      "Set-Cookie",
-      `session=${account.userId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
-    );
+    setSessionCookie(req, res, account.userId);
 
     res.status(201).json({
       status: "success",

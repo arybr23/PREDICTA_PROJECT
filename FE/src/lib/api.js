@@ -1,4 +1,9 @@
-const BASE_URL = import.meta.env.VITE_API_URL;
+// Same-origin by default: `/api` is proxied to the API (Vercel rewrite in
+// production, Vite dev proxy in development), so requests and the session
+// cookie stay first-party — a cross-site absolute URL would have the browser
+// drop the SameSite cookie and every call would come back 401.
+// Override with VITE_API_URL to point elsewhere explicitly.
+const BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 async function request(path, options = {}) {
   let res;

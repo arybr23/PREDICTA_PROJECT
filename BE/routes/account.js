@@ -7,6 +7,7 @@ const Firm = require("../models/Firms");
 const { ACCOUNT, FIRM, STORES } = require("../config/firm");
 const { computeIngredients } = require("../config/catalog");
 const python = require("../services/python");
+const { setSessionCookie, clearSessionCookie } = require("../services/cookies");
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -125,10 +126,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    res.setHeader(
-      "Set-Cookie",
-      `session=${account.userId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
-    );
+    setSessionCookie(req, res, account.userId);
 
     res.status(200).json({
       status: "success",
@@ -153,10 +151,7 @@ router.post("/login", async (req, res) => {
 
 /** POST /api/account/logout — clear session cookie. */
 router.post("/logout", (req, res) => {
-  res.setHeader(
-    "Set-Cookie",
-    "session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0",
-  );
+  clearSessionCookie(req, res);
   res.status(200).json({ status: "success", message: "Logged out" });
 });
 
