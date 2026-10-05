@@ -195,7 +195,7 @@ router.get("/metrics", async (req, res) => {
     const store = ctx.store;
     const storeId = store.storeId;
     const days = req.query.days ? Number(req.query.days) : 30;
-    const loggedDays = python.storeHistoryDays(storeId);
+    const loggedDays = await python.storeHistoryDays(storeId);
 
     if (!loggedDays) {
       return res.status(200).json({

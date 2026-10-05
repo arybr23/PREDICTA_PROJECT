@@ -71,7 +71,7 @@ router.get("/health", async (req, res) => {
     status: "ok",
     message: "Backend server is running",
     timestamp: new Date().toISOString(),
-    python: python.pythonInfo(),
+    python: await python.pythonInfo(),
     mongo: {
       state: MONGO_STATES[mongoose.connection.readyState] || "unknown",
       connected: mongo.connected,

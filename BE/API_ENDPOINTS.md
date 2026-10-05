@@ -252,5 +252,61 @@ under `ML/salesHistory/<id>/raw/`, builds the feature matrix under
 reserved for the cashier's staged day. A store imported before this bridge existed
 can be caught up with `POST /api/sales/rebuild`.
 
+---
+
+## 🐍 The ML service behind these endpoints
+
+Every endpoint that needs the model (forecast, metrics, entry, import, rebuild)
+reaches the Python layer through `BE/services/python.js`, which has two modes.
+
+**HTTP mode** — used when `ML_API_URL` is set in `BE/.env` (it is, by default):
+the FastAPI service in `ML/api/main.py` keeps one warm process instead of
+starting a Python interpreter per call.
+
+```bash
+npm run ml:api          # from the repo root → http://127.0.0.1:5001
+npm run ml:api:dev      # same, with --reload
+curl http://127.0.0.1:5001/health
+```
+
+**Subprocess mode** — used when `ML_API_URL` is unset, and as an automatic
+**fallback when the service is unreachable** (connection refused / unknown
+host). Only transport failures fall back: an answer the service actually gave —
+including `{"status": "error", …}` and 500s from a crashed script — is
+surfaced as-is, never retried elsewhere. `GET /api/health` reports which mode
+is active (`python.mode`, `python.reachable`).
+
+### Service endpoints (called by the backend, not by the frontend)
+
+| Method | Service endpoint | Backend call | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/predict` | `getForecast` | Tomorrow's forecast (`/forecast/tomorrow`) |
+| `POST` | `/benchmark` | `getBenchmark` | Backtest (`/forecast/metrics`) |
+| `POST` | `/append-log` | `appendDailyLog` | Fold a logged day into the history |
+| `POST` | `/train` | `trainIncremental` | Incremental retrain |
+| `POST` | `/import-sales` | `importSales` | Parse an uploaded sales file (`/sales/import`) |
+| `POST` | `/rebuild` | `rebuildStoreHistory` | Dataset → history → feature matrix |
+| `GET` | `/store-history-days/:id` | `storeHistoryDays` | Distinct logged days (training gate) |
+| `GET` | `/dataset-span/:id` | `datasetSpan` | Min/max date of the store's dataset (weather backfill size) |
+| `GET` | `/health` | `pythonInfo` | Reachability for `/api/health` |
+| `GET` | `/has-store-history/:id`, `/dataset-path/:id`, `/store-history-path/:id` | — | Debug equivalents of the API's own local file checks |
+
+### Error contract
+
+The service answers **200** with the script's own payload, errors included:
+
+```json
+{ "status": "error", "message": "No sales history for store 'NOPE'", "rows_read": 0 }
+```
+
+`BE/services/python.js` turns that into an `Error` with `.message` and
+`.payload`, which is exactly what the subprocess mode produced — so the
+`NOT_READY` matching in `routes/forecast.js` still answers `200
+{ "empty": true }` instead of a 503, and `/sales/import` still reports
+`unmatched_items` / `problems`. Crashes without usable output (traceback,
+timeout) come back as **500** with `{ "status": "error", "message", "detail" }`.
+
+`GET /docs` on port 5001 is the interactive OpenAPI page.
+
 
 

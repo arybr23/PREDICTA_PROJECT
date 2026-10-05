@@ -175,6 +175,7 @@ You should see `"mongo": { "state": "connected", "mode": "atlas", ... }`.
 | `MONGO_ATLAS_URL` | Atlas → Connect → Drivers → Node.js connection string | Cloud MongoDB connection (SRV format) |
 | `MONGO_COMPASS_URL` | Same as Atlas, but direct host:port format | Direct connection (if SRV fails) |
 | `MONGO_URL` | Local install: `mongodb://127.0.0.1:27017/predicta_db` | Local dev fallback |
+| `ML_API_URL` | `http://127.0.0.1:5001` | ML HTTP service (`npm run ml:api`). Leave as is; if the service is down the API falls back to spawning the scripts itself |
 
 ---
 
@@ -197,6 +198,13 @@ You should see `"mongo": { "state": "connected", "mode": "atlas", ... }`.
 ### MongoDB Atlas: "Connection refused"
 - Check Network Access → your IP is whitelisted.
 - The connection string might be missing the database name (`/predicta_db`).
+
+### Forecasts are slow, or `/api/health` shows `python.reachable: false`
+- The ML HTTP service is not running: start it with `npm run ml:api`.
+- Nothing is broken when it is down — every ML call falls back to spawning
+  `ML/src/*.py`, just slower (a fresh Python process per request).
+- Check the address: the API uses `ML_API_URL` from `BE/.env`
+  (default `http://127.0.0.1:5001`).
 
 ---
 

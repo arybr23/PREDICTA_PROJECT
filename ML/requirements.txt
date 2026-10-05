@@ -9,3 +9,8 @@ Faker==37.12.0
 python-dateutil==2.9.0.post0
 pytz==2026.3.post1
 openpyxl==3.1.5
+
+# ML HTTP service (npm run ml:api — see ML/api/main.py)
+fastapi==0.128.8
+uvicorn==0.39.0
+pydantic==2.13.5

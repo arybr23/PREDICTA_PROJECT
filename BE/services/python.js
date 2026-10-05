@@ -1,8 +1,24 @@
 /**
  * Bridge between the Express API and the Python/LightGBM layer.
  *
- * Each ML script is a standalone CLI that prints a single JSON object on
- * stdout. This module spawns them, enforces a timeout, and parses the result.
+ * Two modes:
+ *   1. HTTP (default when ML_API_URL is set) — calls the FastAPI service on
+ *      port 5001. No subprocess spawning, timeout handled by AbortController.
+ *   2. Subprocess — spawns the Python scripts directly.
+ *
+ * HTTP is preferred but never a hard dependency: when the service cannot be
+ * reached at all (connection refused, unknown host), the call transparently
+ * falls back to the subprocess path so the API keeps working. Errors the
+ * service reports about the ML work itself ({"status": "error", ...}, or a 500
+ * carrying one) are surfaced as-is and never retried — the service is up, the
+ * job genuinely failed.
+ *
+ * To start the FastAPI service:
+ *   npm run ml:api          (from the repo root)
+ *   cd ML && ./venv/bin/uvicorn api.main:app --host 127.0.0.1 --port 5001
+ *
+ * Environment:
+ *   ML_API_URL=http://127.0.0.1:5001   (optional, unset = subprocess mode)
  */
 
 const { spawn } = require("node:child_process");
@@ -13,6 +29,9 @@ const ML_DIR = path.resolve(__dirname, "..", "..", "ML");
 const SRC_DIR = path.join(ML_DIR, "src");
 const VENV_PYTHON = path.join(ML_DIR, "venv", "bin", "python");
 
+const ML_API_URL = (process.env.ML_API_URL || "").replace(/\/$/, "");
+const USE_HTTP = Boolean(ML_API_URL);
+
 const DEFAULT_TIMEOUT_MS = 60_000;
 const TRAIN_TIMEOUT_MS = 180_000;
 
@@ -22,10 +41,133 @@ function resolvePython() {
   return process.platform === "win32" ? "python" : "python3";
 }
 
+// ---------------------------------------------------------------------------
+// HTTP mode — call FastAPI endpoints
+// ---------------------------------------------------------------------------
+
+// Transport failures only: the service was never there to answer. Anything it
+// answered with (application error, 500 from a crashed script) is a real result
+// and is never retried elsewhere.
+const UNREACHABLE_CODES = new Set([
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "ECONNRESET",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EAI_AGAIN",
+  "EPIPE",
+]);
+
+function markUnreachable(err) {
+  const code = err && err.cause && err.cause.code;
+  if (code && UNREACHABLE_CODES.has(code)) err.unreachable = true;
+  else if (!code && /fetch failed/i.test((err && err.message) || "")) err.unreachable = true;
+  return err;
+}
+
+async function httpPost(endpoint, body, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const url = `${ML_API_URL}${endpoint}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const text = await res.text();
+      const err = new Error(`ML API ${endpoint} returned ${res.status}: ${text.slice(0, 500)}`);
+      err.payload = safeJson(text);
+      throw err;
+    }
+
+    const data = await res.json();
+    if (data.status === "error") {
+      const err = new Error(data.message || `ML API error on ${endpoint}`);
+      err.payload = data;
+      err.detail = data.detail;
+      throw err;
+    }
+    return data;
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === "AbortError") {
+      throw new Error(`ML API ${endpoint} timed out after ${timeoutMs}ms`);
+    }
+    throw markUnreachable(err);
+  }
+}
+
+async function httpGet(endpoint, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const url = `${ML_API_URL}${endpoint}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const text = await res.text();
+      const err = new Error(`ML API ${endpoint} returned ${res.status}: ${text.slice(0, 500)}`);
+      err.payload = safeJson(text);
+      throw err;
+    }
+    return res.json();
+  } catch (err) {
+    clearTimeout(timer);
+    if (err.name === "AbortError") {
+      throw new Error(`ML API ${endpoint} timed out after ${timeoutMs}ms`);
+    }
+    throw markUnreachable(err);
+  }
+}
+
+function safeJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Run a python script and resolve with its parsed JSON payload.
- * Rejects with an Error carrying `.detail` for diagnostics.
+ * Try the ML service; if it is not reachable, run the script here instead.
+ * `runSubprocess` is only invoked for transport failures, never for an answer
+ * the service actually gave.
  */
+async function callML(endpoint, body, timeoutMs, runSubprocess) {
+  try {
+    return await httpPost(endpoint, body, timeoutMs);
+  } catch (err) {
+    if (!err.unreachable) throw err;
+    console.warn(`[ml] ${endpoint} unreachable (${err.cause && err.cause.code}) — falling back to subprocess`);
+    return runSubprocess();
+  }
+}
+
+async function callMLGet(endpoint, timeoutMs, runLocal) {
+  try {
+    return await httpGet(endpoint, timeoutMs);
+  } catch (err) {
+    if (!err.unreachable) throw err;
+    console.warn(`[ml] ${endpoint} unreachable (${err.cause && err.cause.code}) — reading local files instead`);
+    return runLocal();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Subprocess mode (fallback when FastAPI is not available)
+// ---------------------------------------------------------------------------
+
 function runScript(script, args = [], { timeout = DEFAULT_TIMEOUT_MS, stdinData = null } = {}) {
   return new Promise((resolve, reject) => {
     const python = resolvePython();
@@ -72,9 +214,7 @@ function runScript(script, args = [], { timeout = DEFAULT_TIMEOUT_MS, stdinData 
       const line = lastJsonObject(stdout);
 
       if (!line) {
-        const err = new Error(
-          `Python script '${script}' produced no JSON (exit code ${code})`
-        );
+        const err = new Error(`Python script '${script}' produced no JSON (exit code ${code})`);
         err.detail = (stderr.trim() || stdout.trim()).slice(-2000);
         reject(err);
         return;
@@ -104,7 +244,6 @@ function runScript(script, args = [], { timeout = DEFAULT_TIMEOUT_MS, stdinData 
   });
 }
 
-/** ML scripts print diagnostics to stderr, so grab the last {...} line of stdout. */
 function lastJsonObject(text) {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
   for (let i = lines.length - 1; i >= 0; i -= 1) {
@@ -113,9 +252,9 @@ function lastJsonObject(text) {
   return null;
 }
 
-// ---- Forecast cache -------------------------------------------------------
-// Predicting spawns a python process; cache briefly so page refreshes are cheap.
-// The cache is keyed per store: each store has its own history and model.
+// ---------------------------------------------------------------------------
+// Operations — HTTP first, subprocess when the service is unreachable
+// ---------------------------------------------------------------------------
 
 const forecastCache = new Map();
 const CACHE_TTL_MS = Number(process.env.FORECAST_CACHE_MS || 60_000);
@@ -144,7 +283,20 @@ async function getForecast(options = {}) {
   if (options.weather) args.push("--weather", String(options.weather));
   if (options.temperature != null) args.push("--temperature", String(options.temperature));
 
-  const value = await runScript("predict.py", args);
+  const value = USE_HTTP
+    ? await callML(
+        "/predict",
+        {
+          storeId: options.storeId || null,
+          date: options.date || null,
+          weather: options.weather || null,
+          temperature: options.temperature ?? null,
+          model: options.model || null,
+        },
+        DEFAULT_TIMEOUT_MS,
+        () => runScript("predict.py", args),
+      )
+    : await runScript("predict.py", args);
 
   forecastCache.set(key, { at: Date.now(), value });
   return { ...value, cached: false };
@@ -154,9 +306,7 @@ function clearForecastCache() {
   forecastCache.clear();
 }
 
-// ---- Benchmark cache ------------------------------------------------------
-// The backtest is expensive (hundreds of row builds), so cache it much longer.
-// Keyed per store/day-window because every store backtests its own history.
+// ---- Benchmark -----------------------------------------------------------
 
 const BENCHMARK_TTL_MS = Number(process.env.BENCHMARK_CACHE_MS || 600_000);
 const benchmarkCache = new Map();
@@ -172,72 +322,122 @@ async function getBenchmark({ days = 30, model = null, storeId = null } = {}) {
   if (model) args.push("--model", String(model));
   if (storeId) args.push("--store", String(storeId));
 
-  const value = await runScript("benchmark.py", args, { timeout: TRAIN_TIMEOUT_MS });
+  const value = USE_HTTP
+    ? await callML("/benchmark", { days, model, storeId }, TRAIN_TIMEOUT_MS, () =>
+        runScript("benchmark.py", args, { timeout: TRAIN_TIMEOUT_MS }),
+      )
+    : await runScript("benchmark.py", args, { timeout: TRAIN_TIMEOUT_MS });
+
   benchmarkCache.set(key, { at: Date.now(), value });
   return { ...value, cached: false };
 }
 
-function appendDailyLog(payload, storeId = null) {
-  const args = storeId ? ["--store", String(storeId)] : [];
-  return runScript("append_daily_log.py", args, {
-    timeout: TRAIN_TIMEOUT_MS,
-    stdinData: JSON.stringify(payload),
-  });
+// ---- Append daily log ----------------------------------------------------
+
+async function appendDailyLog(payload, storeId = null) {
+  const run = () =>
+    runScript("append_daily_log.py", storeId ? ["--store", String(storeId)] : [], {
+      timeout: TRAIN_TIMEOUT_MS,
+      stdinData: JSON.stringify(payload),
+    });
+  return USE_HTTP ? callML("/append-log", { storeId, payload }, TRAIN_TIMEOUT_MS, run) : run();
 }
 
-function trainIncremental(options = {}) {
+// ---- Train ---------------------------------------------------------------
+
+async function trainIncremental(options = {}) {
   const args = [];
   if (options.storeId) args.push("--store", String(options.storeId));
   if (options.tailDays != null) args.push("--tail-days", String(options.tailDays));
   if (options.rounds != null) args.push("--rounds", String(options.rounds));
-  return runScript("incremental_train.py", args, { timeout: TRAIN_TIMEOUT_MS });
+
+  const run = () => runScript("incremental_train.py", args, { timeout: TRAIN_TIMEOUT_MS });
+  if (!USE_HTTP) return run();
+
+  return callML(
+    "/train",
+    {
+      storeId: options.storeId || null,
+      tailDays: options.tailDays ?? null,
+      rounds: options.rounds ?? null,
+    },
+    TRAIN_TIMEOUT_MS,
+    run,
+  );
 }
 
-/**
- * Import a pre-existing sales file into the store's dataset.
- *
- * `menuFile` is a JSON sidecar the caller writes, listing the store's items, so
- * the importer can resolve the uploaded product names or codes against them.
- */
-function importSales({ storeId, file, menuFile, sheet, dryRun = false } = {}) {
+// ---- Import sales --------------------------------------------------------
+
+async function importSales({ storeId, file, menuFile, sheet, dryRun = false } = {}) {
   const args = ["--store", String(storeId), "--file", String(file)];
   if (menuFile) args.push("--menu", String(menuFile));
   if (sheet) args.push("--sheet", String(sheet));
   if (dryRun) args.push("--dry-run");
-  return runScript("import_sales.py", args, { timeout: TRAIN_TIMEOUT_MS });
+
+  const run = () => runScript("import_sales.py", args, { timeout: TRAIN_TIMEOUT_MS });
+  if (!USE_HTTP) return run();
+
+  return callML(
+    "/import-sales",
+    { storeId, file, menuFile, sheet, dryRun },
+    TRAIN_TIMEOUT_MS,
+    run,
+  );
 }
 
-/**
- * Derive a store's ML history + feature matrix from its imported dataset.
- *
- * This is the bridge the import needs: uploading a back-catalogue writes only
- * ML/salesHistory/<id>/datasets/<id>.csv, but the forecast reads
- * salesHistory/<id>/raw and salesHistory/<id>/processed.
- * `weatherFile` is a JSON map { "YYYY-MM-DD": { weather, temperature } } and
- * `menuFile` carries item categories; either may be omitted.
- */
-function rebuildStoreHistory({ storeId, weatherFile, menuFile, skipFeatures = false } = {}) {
+// ---- Rebuild history -----------------------------------------------------
+
+async function rebuildStoreHistory({ storeId, weatherFile, menuFile, skipFeatures = false } = {}) {
   const args = ["--store", String(storeId)];
   if (weatherFile) args.push("--weather", String(weatherFile));
   if (menuFile) args.push("--menu", String(menuFile));
   if (skipFeatures) args.push("--skip-features");
-  return runScript("rebuild_store_history.py", args, { timeout: TRAIN_TIMEOUT_MS });
+
+  const run = () => runScript("rebuild_store_history.py", args, { timeout: TRAIN_TIMEOUT_MS });
+  if (!USE_HTTP) return run();
+
+  return callML(
+    "/rebuild",
+    { storeId, weatherFile, menuFile, skipFeatures },
+    TRAIN_TIMEOUT_MS,
+    run,
+  );
 }
 
-function pythonInfo() {
+// ---- Info ----------------------------------------------------------------
+
+/**
+ * What /api/health reports about the Python layer. In HTTP mode the service is
+ * pinged, so `reachable: false` means ML_API_URL is set but nothing answers
+ * there (calls will be falling back to subprocess).
+ */
+async function pythonInfo() {
+  if (USE_HTTP) {
+    const info = { mode: "http", mlApiUrl: ML_API_URL, reachable: false };
+    try {
+      const health = await httpGet("/health", 3000);
+      info.reachable = true;
+      info.python = health.python;
+      info.mlDir = health.ml_dir;
+    } catch (err) {
+      info.error = err.message;
+    }
+    return info;
+  }
   const python = resolvePython();
   return {
+    mode: "subprocess",
     python,
     mlDir: ML_DIR,
     venv: fs.existsSync(VENV_PYTHON),
   };
 }
 
-// ---- Per-store ML files ---------------------------------------------------
-// Mirrors ML/src/store_paths.py: a store's artifacts live under
-// ML/salesHistory/<storeId>/{datasets,raw,processed,models}/. The store document
-// no longer keeps its own copy, so these are how the API answers "does this
-// store have any history yet?"
+// ---- Per-store ML files --------------------------------------------------
+// These read the local filesystem on purpose: the API and the ML layer share
+// ML/salesHistory/<storeId>/, so an existence check or a header read needs no
+// network hop. (The FastAPI service exposes /has-store-history,
+// /dataset-path and /store-history-path as debug equivalents.)
 
 const SALES_HISTORY_ROOT = path.join(ML_DIR, "salesHistory");
 const UNSAFE_ID = /[^A-Za-z0-9_-]/g;
@@ -248,7 +448,6 @@ function storeHistoryPath(storeId) {
   return path.join(SALES_HISTORY_ROOT, safe, "raw", "historical_sales.csv");
 }
 
-/** True when the ML layer already holds a history file for this store. */
 function hasStoreHistory(storeId) {
   const file = storeHistoryPath(storeId);
   return Boolean(file) && fs.existsSync(file);
@@ -262,71 +461,80 @@ function datasetPath(storeId) {
   return path.join(DATASET_DIR, safe, "datasets", `${safe}.csv`);
 }
 
-/**
- * { from, to } min/max date present in a store's imported dataset, or null when
- * the dataset is missing or has no usable date column. Used to size the weather
- * backfill so a rebuild fetches only the days the store actually has.
- */
-function datasetSpan(storeId) {
-  const file = datasetPath(storeId);
-  if (!file || !fs.existsSync(file)) return null;
+async function datasetSpan(storeId) {
+  // The local reader answers with the same envelope the service returns, so a
+  // mid-call fallback is invisible to the caller.
+  const readLocal = () => {
+    const file = datasetPath(storeId);
+    if (!file || !fs.existsSync(file)) return { span: null };
 
-  let text;
-  try {
-    text = fs.readFileSync(file, "utf8");
-  } catch {
-    return null;
-  }
+    let text;
+    try {
+      text = fs.readFileSync(file, "utf8");
+    } catch {
+      return { span: null };
+    }
 
-  const lines = text.split("\n").filter((l) => l.trim());
-  if (lines.length < 2) return null;
+    const lines = text.split("\n").filter((l) => l.trim());
+    if (lines.length < 2) return { span: null };
 
-  const dateIndex = lines[0].split(",").indexOf("date");
-  if (dateIndex === -1) return null;
+    const dateIndex = lines[0].split(",").indexOf("date");
+    if (dateIndex === -1) return { span: null };
 
-  let min = null;
-  let max = null;
-  for (let i = 1; i < lines.length; i += 1) {
-    const value = lines[i].split(",")[dateIndex]?.trim();
-    if (!value) continue;
-    if (min == null || value < min) min = value;
-    if (max == null || value > max) max = value;
-  }
-  return min && max ? { from: min, to: max } : null;
+    let min = null;
+    let max = null;
+    for (let i = 1; i < lines.length; i += 1) {
+      const value = lines[i].split(",")[dateIndex]?.trim();
+      if (!value) continue;
+      if (min == null || value < min) min = value;
+      if (max == null || value > max) max = value;
+    }
+    return { span: min && max ? { from: min, to: max } : null };
+  };
+
+  if (!USE_HTTP) return readLocal().span;
+
+  const data = await callMLGet(`/dataset-span/${encodeURIComponent(storeId)}`, DEFAULT_TIMEOUT_MS, readLocal);
+  return data.span;
 }
 
-/**
- * Distinct dates in a store's ML history, or 0 when it has none.
- *
- * The date column is always first, so a plain split is safe even when a later
- * column (item_name) contains a quoted comma.
- */
-function storeHistoryDays(storeId) {
-  const file = storeHistoryPath(storeId);
-  if (!file) return 0;
+async function storeHistoryDays(storeId) {
+  const readLocal = () => {
+    const file = storeHistoryPath(storeId);
+    if (!file) return { days: 0 };
 
-  let text;
-  try {
-    text = fs.readFileSync(file, "utf8");
-  } catch {
-    return 0;
-  }
+    let text;
+    try {
+      text = fs.readFileSync(file, "utf8");
+    } catch {
+      return { days: 0 };
+    }
 
-  const lines = text.split("\n");
-  if (!lines.length) return 0;
+    const lines = text.split("\n");
+    if (!lines.length) return { days: 0 };
 
-  const dateIndex = lines[0].split(",").indexOf("date");
-  if (dateIndex === -1) return 0;
+    const dateIndex = lines[0].split(",").indexOf("date");
+    if (dateIndex === -1) return { days: 0 };
 
-  const dates = new Set();
-  for (let i = 1; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (!line.trim()) continue;
-    const value = line.split(",")[dateIndex];
-    if (value && value.trim()) dates.add(value.trim());
-  }
-  return dates.size;
+    const dates = new Set();
+    for (let i = 1; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (!line.trim()) continue;
+      const value = line.split(",")[dateIndex];
+      if (value && value.trim()) dates.add(value.trim());
+    }
+    return { days: dates.size };
+  };
+
+  if (!USE_HTTP) return readLocal().days;
+
+  const data = await callMLGet(`/store-history-days/${encodeURIComponent(storeId)}`, DEFAULT_TIMEOUT_MS, readLocal);
+  return data.days;
 }
+
+// ---------------------------------------------------------------------------
+// Exports
+// ---------------------------------------------------------------------------
 
 module.exports = {
   ML_DIR,

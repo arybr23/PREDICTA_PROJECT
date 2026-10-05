@@ -15,18 +15,18 @@ the model tracks stockout history as a first-class feature.
 ## Architecture
 
 ```
-[ React SPA ]  ──HTTP/JSON──►  [ Express API ]  ──child_process──►  [ Python / LightGBM ]
-  FE/  :5173                     BE/  :5000                          ML/src/predict.py
-                                    │
-                                    └──► BE/data/store.json  (JSON persistence)
+[ React SPA ]  ──HTTP/JSON──►  [ Express API ]  ──HTTP──►  [ ML service ]  ──spawn──►  [ Python / LightGBM ]
+  FE/  :5173                     BE/  :5000        :5001     ML/api/main.py              ML/src/*.py
+                                     │             (npm run ml:api)
+                                     └── child_process fallback when the ML service is not running
 ```
 
 Three independently runnable modules:
 
 | Module | Stack | Role |
 | --- | --- | --- |
-| `ML/` | Python 3.9, LightGBM, pandas | Synthetic data generation, feature engineering, training, forecasting, backtesting |
-| `BE/` | Node.js, Express 4, Mongoose | REST API, catalog + recipes, spawns the Python layer, persists state |
+| `ML/` | Python 3.9, LightGBM, pandas, FastAPI | Synthetic data generation, feature engineering, training, forecasting, backtesting; HTTP service in `ML/api/` |
+| `BE/` | Node.js, Express 4, Mongoose | REST API, catalog + recipes, calls the Python layer (HTTP service, subprocess fallback), persists state |
 | `FE/` | React 19, Vite 8, Tailwind 4 | Dashboard, Data Entry, Cashier POS, Account Profile |
 
 ---
@@ -42,7 +42,11 @@ npm run ml:generate
 npm run ml:prep
 npm run ml:train
 
-# 3. Run the app
+# 3. ML HTTP service (optional, one more terminal — one warm process instead
+#    of a fresh Python interpreter per call)
+npm run ml:api           # http://127.0.0.1:5001  (npm run ml:api:dev for --reload)
+
+# 4. Run the app
 npm run dev          # starts BE on :5000 and FE on :5173
 ```
 
@@ -53,6 +57,10 @@ The backend also runs standalone: `npm run dev:be` (or `cd BE && node server.js`
 > `npm run dev` uses `&` to run both servers, which works on macOS/Linux. On
 > Windows, run `dev:be` and `dev:fe` in two terminals.
 
+Step 3 is optional: with `ML_API_URL` set in `BE/.env` (it already is) the API
+calls the ML service, and when that service is not running every call falls
+back to spawning `ML/src/*.py` itself — same results, just slower.
+
 ### Environment
 
 `BE/.env` is optional — copy `BE/.env.example`:
@@ -62,6 +70,7 @@ The backend also runs standalone: `npm run dev:be` (or `cd BE && node server.js`
 | `PORT` | `5000` | API port |
 | `MONGO_URI` | unset | **Unset is fine** — the API falls back to `BE/data/store.json` |
 | `PYTHON_BIN` | `ML/venv/bin/python` | Override the interpreter |
+| `ML_API_URL` | `http://127.0.0.1:5001` | ML HTTP service (`npm run ml:api`). Unset = always spawn scripts; set but unreachable = automatic subprocess fallback |
 | `FORECAST_CACHE_MS` | `60000` | Forecast cache lifetime |
 | `BENCHMARK_CACHE_MS` | `600000` | Backtest cache lifetime |
 

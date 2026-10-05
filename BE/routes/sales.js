@@ -409,7 +409,7 @@ router.get("/daily", async (req, res) => {
 
     const loggedEntries = await storeDataset.rowsForDate(store.storeId, date);
     const logged = loggedEntries.length > 0;
-    const historyDays = python.storeHistoryDays(store.storeId);
+    const historyDays = await python.storeHistoryDays(store.storeId);
 
     res.status(200).json({
       status: "success",
@@ -720,7 +720,7 @@ router.post("/rebuild", async (req, res) => {
     if (!ctx) return;
 
     const store = ctx.store;
-    const span = python.datasetSpan(store.storeId);
+    const span = await python.datasetSpan(store.storeId);
     if (!span) {
       return res.status(400).json({
         status: "error",

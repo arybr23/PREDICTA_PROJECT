@@ -1,4 +1,4 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const BASE_URL = import.meta.env.VITE_API_URL;
 
 async function request(path, options = {}) {
   let res;
@@ -94,7 +94,10 @@ export const api = {
   checkout: (storeId, items) =>
     post(`/pos/checkout${query({ storeId })}`, { items }),
   setItemStatus: (storeId, itemId, stockout) =>
-    patch(`/pos/item-status${query({ storeId })}`, { item_id: itemId, stockout }),
+    patch(`/pos/item-status${query({ storeId })}`, {
+      item_id: itemId,
+      stockout,
+    }),
   transactions: (storeId, limit) =>
     request(`/pos/transactions${query({ storeId, limit })}`),
 
@@ -107,7 +110,8 @@ export const api = {
   // dataset itself.
   // One day's state for the Daily Sales Log: what the till recorded, whether the
   // date is already logged, and how much history the store has.
-  salesDaily: (storeId, date) => request(`/sales/daily${query({ storeId, date })}`),
+  salesDaily: (storeId, date) =>
+    request(`/sales/daily${query({ storeId, date })}`),
 
   // Weather is fetched server-side from the store's city; this is the preview
   // the Data Entry form shows so nobody types it.
