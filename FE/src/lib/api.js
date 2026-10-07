@@ -169,8 +169,6 @@ export const api = {
   storeRename: (storeId, storeName, city) =>
     patch(`/stores/${storeId}`, { storeName, city }),
   storeDelete: (storeId) => request(`/stores/${storeId}`, { method: "DELETE" }),
-  storeInitialize: (storeId, options = {}) =>
-    post(`/stores/${storeId}/initialize`, options),
   storeMenu: (storeId) => request(`/stores/${storeId}/menu`),
   storeMenuCreate: (storeId, item) => post(`/stores/${storeId}/menu`, item),
   storeMenuUpdate: (storeId, itemId, item) =>

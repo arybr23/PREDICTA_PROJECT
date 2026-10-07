@@ -161,7 +161,6 @@ function MenuContent() {
         <h1 className="text-2xl font-bold text-text-main">Menu</h1>
         <p className="text-sm text-text-muted">
           {selectedStore.storeName} · {selectedStoreId}
-          {!selectedStore.initialized && " · not initialised yet"}
         </p>
       </div>
 

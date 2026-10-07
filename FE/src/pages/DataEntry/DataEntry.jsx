@@ -41,7 +41,7 @@ function DataEntry() {
 }
 
 function DataEntryContent() {
-  const { selectedStoreId, selectedStore, refreshStores } = useStores();
+  const { selectedStoreId, selectedStore } = useStores();
   const catalog = useApi(() => api.catalog(selectedStoreId), [selectedStoreId]);
   const metrics = useApi(
     () => api.metrics({ storeId: selectedStoreId }),
@@ -164,15 +164,6 @@ function DataEntryContent() {
       // The day is now closed, so re-read to swap the form for its summary.
       daily.reload();
       metrics.reload();
-      // First real data write for this store also makes it initialised.
-      if (selectedStoreId && selectedStore && !selectedStore.initialized) {
-        try {
-          await api.storeInitialize(selectedStoreId);
-          refreshStores();
-        } catch {
-          /* the store stays pending; the manager can seed it from Stores */
-        }
-      }
     }
   };
 
@@ -237,48 +228,53 @@ function DataEntryContent() {
       {catalog.data && !items.length && (
         <EmptyState
           title="No menu yet"
-          description={`${selectedStore?.storeName || "This store"} has no menu items yet. A manager can add them from the Stores page, then daily sales can be logged here.`}
+          description={`Daily logging, recipe templates and the cashier stay disabled until ${
+            selectedStore?.storeName || "this store"
+          } has menu items. You can still post a dataset below — the demo seed offers to add its sample products to your menu.`}
         />
       )}
 
-      {catalog.data && items.length > 0 && (
+      {catalog.data && (
         <>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <DailyLogForm
-              items={items}
-              date={date}
-              onDateChange={setDate}
-              weatherPreview={weatherPreview.data}
-              weatherLoading={weatherPreview.loading || refreshingWeather}
-              onRefreshWeather={handleRefreshWeather}
-              daily={daily.data}
-              sales={effectiveSales}
-              stockouts={effectiveStockouts}
-              onSalesChange={handleSalesChange}
-              onStockoutChange={handleStockoutChange}
-              onSubmit={handleSubmit}
-              submitting={submit.pending}
-            />
-            <StockoutToggle
-              items={items}
-              stockouts={effectiveStockouts}
-              onToggle={handleStockoutChange}
-            />
-          </div>
+          {items.length > 0 && (
+            <>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <DailyLogForm
+                  items={items}
+                  date={date}
+                  onDateChange={setDate}
+                  weatherPreview={weatherPreview.data}
+                  weatherLoading={weatherPreview.loading || refreshingWeather}
+                  onRefreshWeather={handleRefreshWeather}
+                  daily={daily.data}
+                  sales={effectiveSales}
+                  stockouts={effectiveStockouts}
+                  onSalesChange={handleSalesChange}
+                  onStockoutChange={handleStockoutChange}
+                  onSubmit={handleSubmit}
+                  submitting={submit.pending}
+                />
+                <StockoutToggle
+                  items={items}
+                  stockouts={effectiveStockouts}
+                  onToggle={handleStockoutChange}
+                />
+              </div>
 
-          {recipes.loading ? (
-            <LoadingBlock label="Loading recipes…" />
-          ) : (
-            <RecipeTemplateBuilder
-              items={items}
-              defaultRecipes={defaultRecipes}
-              onSave={handleSaveRecipe}
-              saving={saveRecipe.pending}
-            />
+              {recipes.loading ? (
+                <LoadingBlock label="Loading recipes…" />
+              ) : (
+                <RecipeTemplateBuilder
+                  items={items}
+                  defaultRecipes={defaultRecipes}
+                  onSave={handleSaveRecipe}
+                  saving={saveRecipe.pending}
+                />
+              )}
+            </>
           )}
 
-          {/* One-off setup: load sales that predate this store joining the app,
-              or seed the shared sample dataset on an empty store. */}
+          {/* Dataset post — available immediately, even before the store has a menu. */}
           <ImportHistoryPanel
             storeId={selectedStoreId}
             onImported={() => {

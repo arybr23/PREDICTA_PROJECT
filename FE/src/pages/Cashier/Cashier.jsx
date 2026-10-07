@@ -159,7 +159,7 @@ function CashierContent() {
       {menu.data && !menu.data.items.length && (
         <EmptyState
           title="No menu yet"
-          description={`${selectedStore?.storeName || "This store"} has no menu items yet. A manager can add them from the Stores page.`}
+          description={`${selectedStore?.storeName || "This store"} has no menu items yet, so the cashier stays disabled. A manager can add them on the Menu page, or post a demo dataset from Data Entry to add them in one step.`}
         />
       )}
 

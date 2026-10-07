@@ -28,7 +28,6 @@ function StoresContent() {
   const add = useMutation();
   const rename = useMutation();
   const remove = useMutation();
-  const seed = useMutation();
 
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
@@ -84,18 +83,6 @@ function StoresContent() {
     if (!window.confirm(`Remove "${store.storeName}" from your firm?`)) return;
     setError(null);
     const { ok, error: err } = await remove.run(() => api.storeDelete(store.storeId));
-    if (ok) {
-      sync();
-    } else {
-      setError(err.message);
-    }
-  };
-
-  const handleUseDemoData = async (store) => {
-    setError(null);
-    const { ok, error: err } = await seed.run(() =>
-      api.storeInitialize(store.storeId, { useDefaultData: true }),
-    );
     if (ok) {
       sync();
     } else {
@@ -240,15 +227,6 @@ function StoresContent() {
                         <p className="truncate text-sm font-medium text-text-main">
                           {store.storeName}
                         </p>
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                            store.initialized
-                              ? "bg-primary/10 text-primary"
-                              : "bg-accent/10 text-accent-dark"
-                          }`}
-                        >
-                          {store.initialized ? "Initialised" : "Pending"}
-                        </span>
                         {!store.hasLocation && (
                           <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-medium text-accent-dark">
                             No city
@@ -263,16 +241,6 @@ function StoresContent() {
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      {!store.initialized && (
-                        <button
-                          type="button"
-                          onClick={() => handleUseDemoData(store)}
-                          disabled={seed.pending}
-                          className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-primary-dark disabled:opacity-50"
-                        >
-                          {seed.pending ? "Setting up…" : "Use default demo data"}
-                        </button>
-                      )}
                       <button
                         type="button"
                         onClick={() => startEdit(store)}

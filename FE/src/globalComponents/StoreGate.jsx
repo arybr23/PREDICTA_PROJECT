@@ -5,9 +5,11 @@ import { useStores } from "../lib/StoreContext";
 /**
  * Second gate, mounted inside WorkspaceGate.
  *
- * The data pages stay empty until a store is selected in the top bar AND that
- * store has been initialised (demo data or a first data write). Children are
- * never mounted, so no data request fires while blocked.
+ * The data pages stay empty until a store is selected in the top bar. Any
+ * store passes — a fresh one goes straight to its pages, where the dataset can
+ * be posted immediately; menu-dependent entry (daily log, cashier) is disabled
+ * inside the pages until the store has menu items. Children are never mounted
+ * while blocked, so no data request fires.
  */
 function StoreGate({ title, subtitle, children }) {
   const { user } = useAuth();
@@ -15,7 +17,7 @@ function StoreGate({ title, subtitle, children }) {
 
   const isManager = user?.role === "manager";
 
-  if (selectedStoreId && selectedStore && selectedStore.initialized) {
+  if (selectedStoreId && selectedStore) {
     return children;
   }
 
@@ -29,7 +31,7 @@ function StoreGate({ title, subtitle, children }) {
   } else if (!stores.length) {
     heading = "No stores yet";
     description = isManager
-      ? "Add your firm's first store, then set it up to unlock its data."
+      ? "Add your firm's first store, then give it a menu or post its dataset."
       : "Your firm has no stores yet. Ask your manager to add one.";
     action = isManager ? (
       <Link
@@ -37,22 +39,6 @@ function StoreGate({ title, subtitle, children }) {
         className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
       >
         Go to Stores
-      </Link>
-    ) : null;
-  } else if (!selectedStoreId || !selectedStore) {
-    heading = "Select a store";
-    description = "Choose a store from the top bar to continue.";
-  } else {
-    heading = `${selectedStore.storeName} is not set up yet`;
-    description = isManager
-      ? "Add its menu and sales, or use the default demo data, to unlock this store."
-      : "Ask your firm's manager to set up this store.";
-    action = isManager ? (
-      <Link
-        to="/stores"
-        className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
-      >
-        Set up this store
       </Link>
     ) : null;
   }

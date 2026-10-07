@@ -24,7 +24,6 @@ function TopNavBar() {
               {stores.map((store) => (
                 <option key={store.storeId} value={store.storeId}>
                   {store.storeName}
-                  {store.initialized ? "" : " · pending"}
                 </option>
               ))}
             </select>
