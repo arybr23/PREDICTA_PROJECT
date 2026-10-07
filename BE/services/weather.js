@@ -1,11 +1,15 @@
 /**
- * Historical weather from Open-Meteo.
+ * Weather from Open-Meteo — historical (archive) and forecast.
  *
- * Free, no API key, no registration. The archive endpoint is backed by ERA5
- * (1940→present) blended with ECMWF IFS for recent days, and it already serves
- * *today*, so a single endpoint covers both backfill and same-day entry.
+ * Free, no API key, no registration. Two endpoints, split by whether the day
+ * has happened yet:
  *
- *   https://archive-api.open-meteo.com/v1/archive
+ *   https://archive-api.open-meteo.com/v1/archive  — today and the past (ERA5
+ *     blended with ECMWF IFS for recent days): backfill and same-day entry
+ *   https://api.open-meteo.com/v1/forecast         — the future (≈16 days):
+ *     the weather /forecast/tomorrow predicts WITH
+ *
+ * Both serve the same daily variables, so one classify() labels either day.
  *
  * Two things about this API drive the design below:
  *
@@ -27,10 +31,12 @@
 const https = require("node:https");
 
 const ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive";
+const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 
 const REQUEST_TIMEOUT_MS = 10_000;
 const PAST_TTL_MS = 6 * 60 * 60 * 1000; // a past day is immutable
 const TODAY_TTL_MS = 30 * 60 * 1000; // today is still filling in
+const FORECAST_TTL_MS = 30 * 60 * 1000; // tomorrow keeps being revised during the day
 
 // ---- Label thresholds -----------------------------------------------------
 // These are a judgement call and the honest place to tune them. Defaults are
@@ -116,6 +122,52 @@ function getJson(url) {
 // ---- Public API -----------------------------------------------------------
 
 /**
+ * Map one Open-Meteo daily payload (either endpoint) to the app's day shape.
+ *
+ * Shared by fetchDay and fetchForecastDay so a past day and a predicted day
+ * are byte-for-byte comparable — same label rules, same temperature convention.
+ */
+function buildDayValue(payload, daily, location, date) {
+  const code = daily.weather_code?.[0] ?? null;
+  const tmax = daily.temperature_2m_max?.[0] ?? null;
+  const tmin = daily.temperature_2m_min?.[0] ?? null;
+  const mean = daily.temperature_2m_mean?.[0] ?? null;
+  const precip = daily.precipitation_sum?.[0] ?? null;
+  const precipHours = daily.precipitation_hours?.[0] ?? null;
+
+  return {
+    date,
+    // The model's single temperature feature.
+    //
+    // This is the day's MAXIMUM, not its mean, and that choice is deliberate:
+    // the generator draws each weather type's temperature from a per-label band
+    // (panas_extreme is 33-38, cerah 28-35, hujan_deras 21-26), and those bands
+    // only line up with a daily high. Surakarta's daily *mean* never reaches
+    // 33 °C, so storing the mean would emit "panas_extreme, 29.3 °C" — a
+    // combination that never appears in training. Using the max keeps the label
+    // and the temperature self-consistent.
+    temperature: tmax != null ? Number(tmax.toFixed(1)) : null,
+    weather: classify({ code, tmax, precip }),
+    detail: {
+      weather_code: code,
+      temperature_mean: mean,
+      temperature_max: tmax,
+      temperature_min: tmin,
+      precipitation_sum: precip,
+      precipitation_hours: precipHours,
+    },
+    location: {
+      city: location.city || null,
+      lat: payload.latitude ?? location.lat,
+      lon: payload.longitude ?? location.lon,
+      timezone: payload.timezone || location.timezone || null,
+    },
+    source: "open-meteo",
+    cached: false,
+  };
+}
+
+/**
  * Weather for one location on one date.
  *
  * @param {{lat:number, lon:number, timezone:string, city?:string}} location
@@ -158,43 +210,7 @@ async function fetchDay(location, date, options = {}) {
     throw new Error(`Open-Meteo returned no data for ${date}`);
   }
 
-  const code = daily.weather_code?.[0] ?? null;
-  const tmax = daily.temperature_2m_max?.[0] ?? null;
-  const tmin = daily.temperature_2m_min?.[0] ?? null;
-  const mean = daily.temperature_2m_mean?.[0] ?? null;
-  const precip = daily.precipitation_sum?.[0] ?? null;
-  const precipHours = daily.precipitation_hours?.[0] ?? null;
-
-  const value = {
-    date,
-    // The model's single temperature feature.
-    //
-    // This is the day's MAXIMUM, not its mean, and that choice is deliberate:
-    // the generator draws each weather type's temperature from a per-label band
-    // (panas_extreme is 33-38, cerah 28-35, hujan_deras 21-26), and those bands
-    // only line up with a daily high. Surakarta's daily *mean* never reaches
-    // 33 °C, so storing the mean would emit "panas_extreme, 29.3 °C" — a
-    // combination that never appears in training. Using the max keeps the label
-    // and the temperature self-consistent.
-    temperature: tmax != null ? Number(tmax.toFixed(1)) : null,
-    weather: classify({ code, tmax, precip }),
-    detail: {
-      weather_code: code,
-      temperature_mean: mean,
-      temperature_max: tmax,
-      temperature_min: tmin,
-      precipitation_sum: precip,
-      precipitation_hours: precipHours,
-    },
-    location: {
-      city: location.city || null,
-      lat: payload.latitude ?? location.lat,
-      lon: payload.longitude ?? location.lon,
-      timezone: payload.timezone || location.timezone || null,
-    },
-    source: "open-meteo",
-    cached: false,
-  };
+  const value = buildDayValue(payload, daily, location, date);
 
   cache.set(key, { at: Date.now(), value });
   return value;
@@ -211,6 +227,86 @@ function isFetchableDate(date, now = new Date()) {
   const m = String(now.getMonth() + 1).padStart(2, "0");
   const d = String(now.getDate()).padStart(2, "0");
   return date <= `${y}-${m}-${d}`;
+}
+
+/**
+ * Whether a date is after today — the one condition where the forecast
+ * endpoint (not the archive) is the right source.
+ */
+function isFutureDate(date, now = new Date()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))) return false;
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return date > `${y}-${m}-${d}`;
+}
+
+/**
+ * Weather for one FUTURE date, from Open-Meteo's forecast endpoint.
+ *
+ * Same daily variables as fetchDay, so classify() and the temperature
+ * convention are unchanged — a predicted day is labelled exactly like a day in
+ * the training data. The forecast horizon is ≈16 days; beyond it the API
+ * answers with an error, which the caller treats as "weather unavailable".
+ *
+ * @param {{lat:number, lon:number, timezone:string, city?:string}} location
+ * @param {string} date  YYYY-MM-DD, strictly after today
+ * @param {{refresh?: boolean}} [options]
+ * @returns {Promise<object>} throws when the lookup fails or the date isn't future
+ */
+async function fetchForecastDay(location, date, options = {}) {
+  if (!location || typeof location.lat !== "number" || typeof location.lon !== "number") {
+    throw new Error("location with numeric lat/lon is required");
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date || ""))) {
+    throw new Error("date must be YYYY-MM-DD");
+  }
+  if (!isFutureDate(date)) {
+    throw new Error(`${date} is not in the future — use fetchDay for today or earlier`);
+  }
+
+  const key = cacheKey(location, date);
+  if (!options.refresh) {
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.at < FORECAST_TTL_MS) {
+      return { ...hit.value, cached: true };
+    }
+  }
+
+  const url =
+    `${FORECAST_URL}?latitude=${location.lat}&longitude=${location.lon}` +
+    `&start_date=${date}&end_date=${date}` +
+    `&daily=weather_code,temperature_2m_mean,temperature_2m_max,temperature_2m_min,` +
+    `precipitation_sum,precipitation_hours` +
+    `&timezone=${encodeURIComponent(location.timezone || "Asia/Jakarta")}`;
+
+  const payload = await getJson(url);
+
+  if (payload.error) {
+    throw new Error(`Open-Meteo: ${payload.reason || "request rejected"}`);
+  }
+
+  const daily = payload.daily || {};
+  if (!daily.time || !daily.time.length) {
+    throw new Error(`Open-Meteo returned no forecast for ${date}`);
+  }
+
+  const value = buildDayValue(payload, daily, location, date);
+
+  cache.set(key, { at: Date.now(), value });
+  return value;
+}
+
+/**
+ * Weather for any date: archive for today/past, forecast for the future.
+ *
+ * One entry point for callers that only know a target date and shouldn't care
+ * which endpoint owns it.
+ */
+async function dayFor(location, date, options = {}) {
+  return isFutureDate(date)
+    ? fetchForecastDay(location, date, options)
+    : fetchDay(location, date, options);
 }
 
 /**
@@ -282,7 +378,10 @@ module.exports = {
   RAIN_MM,
   classify,
   clearCache,
+  dayFor,
   fetchDay,
+  fetchForecastDay,
   fetchRange,
   isFetchableDate,
+  isFutureDate,
 };

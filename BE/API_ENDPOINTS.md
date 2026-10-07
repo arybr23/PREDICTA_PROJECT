@@ -159,12 +159,28 @@ pick a city  ──► store.location ──► GET /sales/weather ────�
                     (lat/lon/tz)      (preview, shown read-only)
                                       POST /sales/entry ─────► fetched again,
                                         (no weather in body)    then recorded
+
+Dashboard                      GET /forecast/tomorrow ───────► forecast API
+(target = tomorrow)              weather looked up per store    (future days,
+                                  before asking the model;       archive when
+                                  ?weather= overrides)           ?date is ≤ today
 ```
 
 **Source.** `https://archive-api.open-meteo.com/v1/archive` — free, **no API
 key**, back to 1940, and it already serves *today*, so one endpoint covers both
 same-day entry and backfill. `BE/services/weather.js` wraps it with a 10 s
 timeout and a cache (6 h for a past day, 30 min for today).
+
+**Forecast days use the forecast endpoint.** `GET /forecast/tomorrow` predicts
+*with* weather: unless `?weather=` is given, it looks the target day up for the
+store's coordinates via `https://api.open-meteo.com/v1/forecast` (≈16-day
+horizon) — same daily variables, so one `classify()` labels a predicted day
+exactly like a training day — and sends the label plus the day's expected
+maximum temperature to the model. Today or a past `?date=` still goes to the
+archive. The response reports the path in `weather_source`: `query` (explicit
+`?weather=`), `open-meteo`, or `default` (lookup failed or no city — predict.py
+falls back to `cerah` + the history-mean temperature, and the route logs a
+warning instead of failing).
 
 **`timezone` is not optional.** Open-Meteo aggregates a day over the *local*
 calendar day, so a store in WITA must be fetched with `Asia/Makassar` or its day

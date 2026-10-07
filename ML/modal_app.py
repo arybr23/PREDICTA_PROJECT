@@ -92,6 +92,32 @@ def web():
     sys.path.insert(0, PKG)
     from api.main import app as application
 
+    volumes = (data_volume, models_volume, history_volume)
+
+    @application.middleware("http")
+    async def volume_sync(request, call_next):
+        # Containers cache their own view of a volume, and writes are only
+        # flushed when the container exits — so a dataset this container just
+        # wrote was invisible to the next request served elsewhere, and reads
+        # saw whatever was committed when THIS container started. Refresh
+        # before handling (see what other containers committed) and commit
+        # after (publish what this one wrote) so seed -> rebuild -> predict
+        # behave the same no matter which container serves each hop.
+        try:
+            for volume in volumes:
+                volume.reload()
+        except Exception as error:  # a stale view is still better than a 500
+            print(f"[volume] reload failed: {error}", file=sys.stderr)
+        try:
+            response = await call_next(request)
+        finally:
+            try:
+                for volume in volumes:
+                    volume.commit()
+            except Exception as error:
+                print(f"[volume] commit failed: {error}", file=sys.stderr)
+        return response
+
     return application
 
 

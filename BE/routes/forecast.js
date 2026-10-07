@@ -6,6 +6,7 @@ const requireStore = require("../middleware/storeScope");
 
 const { CATEGORY_LABEL, computeIngredients } = require("../config/catalog");
 const python = require("../services/python");
+const weather = require("../services/weather");
 
 router.use(requireInitialized);
 
@@ -66,12 +67,26 @@ function hasHistory(storeId) {
   return python.hasStoreHistory(storeId);
 }
 
+/** Server-local calendar date, offset by whole days (route default: tomorrow). */
+function localDate(offsetDays = 0, now = new Date()) {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetDays);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 /**
  * GET /api/forecast/tomorrow?storeId=
  *
  * Runs the forecast for one store's own model and history. Before that store
  * has logged sales the response is an empty payload (HTTP 200) so the
  * dashboard can render its empty state instead of an error.
+ *
+ * The target day defaults to tomorrow, and its weather is looked up for the
+ * store's coordinates (Open-Meteo forecast endpoint for future days, archive
+ * for past) unless ?weather= is given. A failed lookup falls back to
+ * predict.py's default label instead of failing the dashboard — the
+ * `weather_source` field says which path was taken: query | open-meteo | default.
  *
  * Query params: date, weather, temperature, model, refresh (skip cache)
  */
@@ -93,13 +108,34 @@ router.get("/tomorrow", async (req, res) => {
       });
     }
 
+    const targetDate = String(req.query.date || "").trim() || localDate(1);
+
     const options = {
       storeId,
-      date: req.query.date,
+      date: targetDate,
       weather: req.query.weather,
       temperature: req.query.temperature != null ? Number(req.query.temperature) : null,
       model: req.query.model,
     };
+
+    // The weather the prediction is made with. An explicit ?weather= wins;
+    // otherwise fetch the target day for this store. The fetched temperature
+    // (the day's maximum) is used too, so label and °C stay consistent.
+    let weatherSource = options.weather ? "query" : "default";
+    if (!options.weather && typeof store.location?.lat === "number") {
+      try {
+        const wx = await weather.dayFor(store.location, targetDate, {
+          refresh: Boolean(req.query.refresh),
+        });
+        options.weather = wx.weather;
+        if (options.temperature == null && wx.temperature != null) {
+          options.temperature = wx.temperature;
+        }
+        weatherSource = "open-meteo";
+      } catch (error) {
+        console.warn(`[forecast] weather lookup failed (${storeId} ${targetDate}): ${error.message}`);
+      }
+    }
 
     if (req.query.refresh) python.clearForecastCache();
 
@@ -155,6 +191,7 @@ router.get("/tomorrow", async (req, res) => {
       storeId,
       empty: false,
       target_date: forecast.target_date,
+      weather_source: weatherSource,
       generated_at: forecast.generated_at,
       model: forecast.model,
       history_through: forecast.history_through,
