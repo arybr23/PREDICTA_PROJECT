@@ -277,8 +277,15 @@ function DataEntryContent() {
             />
           )}
 
-          {/* One-off setup: load sales that predate this store joining the app. */}
-          <ImportHistoryPanel storeId={selectedStoreId} />
+          {/* One-off setup: load sales that predate this store joining the app,
+              or seed the shared sample dataset on an empty store. */}
+          <ImportHistoryPanel
+            storeId={selectedStoreId}
+            onImported={() => {
+              daily.reload();
+              metrics.reload();
+            }}
+          />
         </>
       )}
     </div>

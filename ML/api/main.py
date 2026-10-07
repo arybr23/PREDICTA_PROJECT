@@ -28,6 +28,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from typing import Optional
 
 from fastapi import FastAPI
@@ -140,6 +141,26 @@ def _dataset_path(store_id: str) -> Optional[str]:
     return os.path.join(SALES_HISTORY_ROOT, sid, "datasets", f"{sid}.csv")
 
 
+def _materialise_json(content: str) -> str:
+    """Write an inline JSON payload (sent over HTTP) to a temp file the scripts
+    can read through their usual --menu/--weather path flags."""
+    handle = tempfile.NamedTemporaryFile(
+        "w", suffix=".json", delete=False, encoding="utf-8"
+    )
+    with handle:
+        handle.write(content)
+    return handle.name
+
+
+def _unlink_quiet(path: Optional[str]) -> None:
+    if not path:
+        return
+    try:
+        os.unlink(path)
+    except OSError:
+        pass
+
+
 # ---------------------------------------------------------------------------
 # Pydantic request models
 # ---------------------------------------------------------------------------
@@ -181,7 +202,18 @@ class RebuildRequest(BaseModel):
     storeId: str
     weatherFile: Optional[str] = None
     menuFile: Optional[str] = None
+    # The Node bridge sends the sidecar content itself when it runs in HTTP
+    # mode: its temp files live on the API host, not in this container.
+    weatherJson: Optional[str] = None
+    menuJson: Optional[str] = None
     skipFeatures: bool = False
+
+
+class SeedRequest(BaseModel):
+    storeId: str
+    date: Optional[str] = None
+    menuJson: Optional[str] = None
+    dryRun: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -300,13 +332,47 @@ def import_sales(req: ImportRequest):
 @app.post("/rebuild")
 def rebuild(req: RebuildRequest):
     args = ["--store", req.storeId]
-    if req.weatherFile:
-        args += ["--weather", req.weatherFile]
-    if req.menuFile:
-        args += ["--menu", req.menuFile]
+    temps: list[str] = []
+    weather = req.weatherFile
+    menu = req.menuFile
+    # Inline content wins over a path: a path from the API host does not exist
+    # inside this container, and a missing sidecar would be silently ignored.
+    if req.weatherJson:
+        weather = _materialise_json(req.weatherJson)
+        temps.append(weather)
+    if req.menuJson:
+        menu = _materialise_json(req.menuJson)
+        temps.append(menu)
+    if weather:
+        args += ["--weather", weather]
+    if menu:
+        args += ["--menu", menu]
     if req.skipFeatures:
         args += ["--skip-features"]
-    return _run_script("rebuild_store_history.py", args, timeout=TRAIN_TIMEOUT)
+    try:
+        return _run_script("rebuild_store_history.py", args, timeout=TRAIN_TIMEOUT)
+    finally:
+        for path in temps:
+            _unlink_quiet(path)
+
+
+@app.post("/seed-dataset")
+def seed_dataset(req: SeedRequest):
+    """Seed one store's dataset from the shared mock history (shifted to end
+    on --date), optionally aligned to the store's menu passed as inline JSON."""
+    args = ["--store", req.storeId]
+    if req.date:
+        args += ["--date", req.date]
+    menu_path = None
+    if req.menuJson:
+        menu_path = _materialise_json(req.menuJson)
+        args += ["--menu", menu_path]
+    if req.dryRun:
+        args += ["--dry-run"]
+    try:
+        return _run_script("seed_from_global.py", args, timeout=TRAIN_TIMEOUT)
+    finally:
+        _unlink_quiet(menu_path)
 
 
 # ---------------------------------------------------------------------------

@@ -83,7 +83,7 @@ router.get("/tomorrow", async (req, res) => {
     const store = ctx.store;
     const storeId = store.storeId;
 
-    if (!hasHistory(storeId)) {
+    if (!(await hasHistory(storeId))) {
       return res.status(200).json({
         status: "success",
         storeId,

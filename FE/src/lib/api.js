@@ -132,6 +132,11 @@ export const api = {
     return upload(`/sales/import${query({ storeId })}`, form);
   },
 
+  // Demo shortcut: does this store have a dataset yet, and (dry run first)
+  // what would seeding the shared sample dataset add?
+  datasetSpan: (storeId) => request(`/sales/dataset-span${query({ storeId })}`),
+  seedDemo: (storeId, body) => post(`/sales/seed-demo${query({ storeId })}`, body),
+
   recipes: (storeId) => request(`/recipes/mapping${query({ storeId })}`),
   saveRecipe: (storeId, itemId, recipe) =>
     post(`/recipes/mapping${query({ storeId })}`, { item_id: itemId, recipe }),

@@ -4,7 +4,7 @@ const router = express.Router();
 const requireInitialized = require("../middleware/requireInitialized");
 const requireStore = require("../middleware/storeScope");
 
-const { roundQuantity } = require("../config/catalog");
+const { getProduct, roundQuantity, CATEGORY_LABEL } = require("../config/catalog");
 const python = require("../services/python");
 const storeDataset = require("../services/storeDataset");
 const upload = require("../services/upload");
@@ -703,6 +703,276 @@ router.post("/import", async (req, res) => {
     // Uploads are transient — remove them on every path, success or not.
     upload.removeQuietly(req.file?.path);
     upload.removeQuietly(menuFile);
+  }
+});
+
+/**
+ * The shared catalog entry for a product, in the shape the store menu schema
+ * expects — the same projection routes/stores.js uses for its default menu.
+ * Returns null when the id is not a catalog product, which the seed routes
+ * use to refuse additions the app knows nothing about.
+ */
+function catalogMenuEntry(itemId) {
+  const product = getProduct(itemId);
+  if (!product) return null;
+  return {
+    itemId: product.itemId,
+    name: product.name,
+    category: product.category,
+    categoryLabel: CATEGORY_LABEL[product.category] || "",
+    price: product.price,
+    icon: product.icon,
+    recipe: (product.recipe || []).map((line) => ({ ...line })),
+  };
+}
+
+/**
+ * Classify the global sample's products against this store's menu.
+ *
+ *   missing       — no menu entry shares the product's code or name
+ *   id_mismatch   — the name matches a menu entry under a different code
+ *   name_mismatch — the code matches but the names differ
+ *
+ * Code wins over name, mirroring how import_sales.py resolves rows, so every
+ * product lands in exactly one bucket.
+ */
+function classifyAgainstMenu(items, menu) {
+  const byId = new Map(menu.map((item) => [item.itemId, item]));
+  const byName = new Map(
+    menu.map((item) => [String(item.name || "").trim().toLowerCase(), item])
+  );
+
+  const review = [];
+  for (const item of items) {
+    const itemId = String(item.item_id || "").trim();
+    const itemName = String(item.item_name || "").trim();
+
+    const idHit = byId.get(itemId);
+    if (idHit) {
+      const menuName = String(idHit.name || "").trim();
+      if (menuName.toLowerCase() !== itemName.toLowerCase()) {
+        review.push({
+          type: "name_mismatch",
+          item_id: itemId,
+          item_name: itemName,
+          menu_id: idHit.itemId,
+          menu_name: idHit.name,
+        });
+      }
+      continue;
+    }
+
+    const nameHit = byName.get(itemName.toLowerCase());
+    if (nameHit) {
+      review.push({
+        type: "id_mismatch",
+        item_id: itemId,
+        item_name: itemName,
+        menu_id: nameHit.itemId,
+        menu_name: nameHit.name,
+      });
+      continue;
+    }
+
+    review.push({ type: "missing", item_id: itemId, item_name: itemName });
+  }
+  return review;
+}
+
+/**
+ * GET /api/sales/dataset-span?storeId= — does this store already have a
+ * dataset, and what does it cover? Drives the "use the demo dataset" button,
+ * which only appears on stores that have never imported or seeded one.
+ */
+router.get("/dataset-span", async (req, res) => {
+  try {
+    const ctx = await requireStore(req, res);
+    if (!ctx) return;
+
+    const span = await python.datasetSpan(ctx.store.storeId);
+    res.status(200).json({
+      status: "success",
+      storeId: ctx.store.storeId,
+      span,
+      hasDataset: Boolean(span),
+    });
+  } catch (error) {
+    console.error("[sales] dataset-span failed:", error.message);
+    res.status(500).json({ status: "error", message: error.message });
+  }
+});
+
+/**
+ * POST /api/sales/seed-demo?storeId= — the one-click demo shortcut.
+ *
+ * Body:
+ *   { dryRun: true }
+ *     Read-only: reports the span the seed would create (global history slid
+ *     forward so the last day is today) and classifies every sample product
+ *     against this store's menu, so the UI can ask what to do about the ones
+ *     that do not line up.
+ *   { addToMenu: [catalogIds], menuChoices: [...] }
+ *     The confirm run. `addToMenu` items are appended to the menu from the
+ *     shared catalog. `menuChoices` entries carry the user's pick for a
+ *     mismatched product: "replace_menu" rewrites that menu entry from the
+ *     catalog, "replace_dataset" leaves the menu alone and lets the seeder
+ *     align the fresh rows to it (code first, then name).
+ *
+ * Only runs on a store with no dataset (409 otherwise): the seed is a full
+ * copy of the sample history, never a merge into real sales.
+ */
+router.post("/seed-demo", async (req, res) => {
+  let menuFile = null;
+
+  try {
+    const ctx = await requireStore(req, res);
+    if (!ctx) return;
+    const store = ctx.store;
+
+    const existing = await python.datasetSpan(store.storeId);
+    if (existing) {
+      return res.status(409).json({
+        status: "error",
+        message: "This store already has a dataset — the demo seed only runs on an empty store",
+        span: existing,
+      });
+    }
+
+    // ---- Dry run: what would be written, and what needs deciding ----------
+    if (req.body?.dryRun === true) {
+      const preview = await python.seedDataset({
+        storeId: store.storeId,
+        date: localToday(),
+        dryRun: true,
+      });
+      return res.status(200).json({
+        status: "success",
+        dry_run: true,
+        storeId: store.storeId,
+        span: { from: preview.date_from, to: preview.date_to },
+        days: preview.days_imported,
+        rows: preview.rows_imported,
+        shift_days: preview.shift_days,
+        review: classifyAgainstMenu(preview.items || [], store.menu || []),
+      });
+    }
+
+    // ---- Confirm run ------------------------------------------------------
+    const addToMenu = [...new Set((req.body?.addToMenu || []).map((id) => String(id)))];
+    const menuChoices = Array.isArray(req.body?.menuChoices) ? req.body.menuChoices : [];
+
+    for (const itemId of addToMenu) {
+      if (!catalogMenuEntry(itemId)) {
+        return res.status(400).json({
+          status: "error",
+          message: `Product '${itemId}' is not in the shared catalog, so it cannot be added to the menu`,
+        });
+      }
+    }
+
+    // Work on a plain copy; the menu is saved once, after every choice has
+    // been validated, so a rejected choice never leaves a half-applied menu.
+    const menu = (store.menu || []).map((item) =>
+      typeof item.toObject === "function" ? item.toObject() : { ...item }
+    );
+    let menuAdded = 0;
+    let menuReplaced = 0;
+
+    for (const choice of menuChoices) {
+      const { type, choice: pick } = choice || {};
+      const datasetId = String(choice?.item_id || "");
+      const menuId = String(choice?.menu_id || "");
+
+      if (!["id_mismatch", "name_mismatch"].includes(type)) {
+        return res.status(400).json({ status: "error", message: `Unknown mismatch type '${type}'` });
+      }
+      if (!["replace_menu", "replace_dataset"].includes(pick)) {
+        return res.status(400).json({ status: "error", message: `Unknown choice '${pick}'` });
+      }
+
+      // The pair the user decided about must still be there — otherwise the
+      // decision refers to a menu that no longer exists; re-run the check.
+      const anchorId = type === "id_mismatch" ? menuId : datasetId;
+      const anchor = menu.find((item) => item.itemId === anchorId);
+      if (!anchor) {
+        return res.status(400).json({
+          status: "error",
+          message: "The menu changed since the check — run the check again",
+        });
+      }
+
+      if (pick === "replace_dataset") continue; // dataset side: the seeder aligns the rows
+
+      const entry = catalogMenuEntry(datasetId);
+      if (!entry) {
+        return res.status(400).json({
+          status: "error",
+          message: `Product '${datasetId}' is not in the shared catalog, so the menu entry cannot be replaced by it`,
+        });
+      }
+
+      if (type === "id_mismatch") {
+        // Same product, different code: swap the menu's code for the
+        // catalog's so the fresh rows join onto it.
+        menu[menu.indexOf(anchor)] = entry;
+      } else {
+        // Same code, different name: take the catalog's name/price/recipe.
+        menu[menu.indexOf(anchor)] = { ...anchor, ...entry, itemId: anchor.itemId };
+      }
+      menuReplaced += 1;
+    }
+
+    for (const itemId of addToMenu) {
+      if (menu.some((item) => item.itemId === itemId)) continue; // already there since the check
+      menu.push(catalogMenuEntry(itemId));
+      menuAdded += 1;
+    }
+
+    if (menuAdded || menuReplaced) {
+      store.menu = menu;
+      await store.save();
+    }
+
+    // The seeder aligns rows against this post-choice menu, and the rebuild
+    // bridge reads categories from it to fill item_category in the history.
+    menuFile = upload.writeTempJson("menu", {
+      storeId: store.storeId,
+      items: menu.map((item) => ({
+        itemId: item.itemId,
+        name: item.name,
+        category: item.category || "",
+      })),
+    });
+
+    const seeded = await python.seedDataset({
+      storeId: store.storeId,
+      date: localToday(),
+      menuFile,
+    });
+
+    const bridge = await runPostImportBridge(store, seeded, menuFile);
+    python.clearForecastCache();
+
+    return res.status(200).json({
+      status: "success",
+      storeId: store.storeId,
+      ...seeded,
+      bridge,
+      menu_added: menuAdded,
+      menu_replaced: menuReplaced,
+      message:
+        `Seeded ${seeded.rows_imported} rows across ${seeded.days_imported} day(s) ` +
+        `(${seeded.date_from} → ${seeded.date_to})`,
+    });
+  } catch (error) {
+    console.error("[sales] seed-demo failed:", error.message);
+    return res.status(error.status || 500).json({
+      status: "error",
+      message: error.message,
+      ...(error.payload ? { detail: error.payload } : {}),
+    });
+  } finally {
+    if (menuFile) upload.removeQuietly(menuFile);
   }
 });
 

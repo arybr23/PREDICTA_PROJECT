@@ -152,6 +152,20 @@ function safeJson(text) {
 }
 
 /**
+ * In HTTP mode a temp file written on this host does not exist inside the
+ * service's container (Modal / another machine), so sidecars are sent as their
+ * JSON content instead of as a path. Subprocess mode keeps passing the path.
+ */
+function inlineJson(filePath) {
+  if (!filePath) return null;
+  try {
+    return fs.readFileSync(filePath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Try the ML service; if it is not reachable, run the script here instead.
  * `runSubprocess` is only invoked for transport failures, never for an answer
  * the service actually gave.
@@ -410,7 +424,37 @@ async function rebuildStoreHistory({ storeId, weatherFile, menuFile, skipFeature
 
   return callML(
     "/rebuild",
-    { storeId, weatherFile, menuFile, skipFeatures },
+    {
+      storeId,
+      weatherJson: inlineJson(weatherFile),
+      menuJson: inlineJson(menuFile),
+      skipFeatures,
+    },
+    TRAIN_TIMEOUT_MS,
+    run,
+  );
+}
+
+// ---- Seed from the shared sample dataset ---------------------------------
+
+/**
+ * Write a store's dataset from ML/data/raw/historical_sales.csv, with the
+ * dates shifted so the history ends on `date` (the caller passes today).
+ * `menuFile` aligns rows to the store's menu; dry runs pass no menu so the
+ * caller sees the raw global products and can classify them itself.
+ */
+async function seedDataset({ storeId, date, menuFile, dryRun = false } = {}) {
+  const args = ["--store", String(storeId)];
+  if (date) args.push("--date", String(date));
+  if (menuFile) args.push("--menu", String(menuFile));
+  if (dryRun) args.push("--dry-run");
+
+  const run = () => runScript("seed_from_global.py", args, { timeout: TRAIN_TIMEOUT_MS });
+  if (!USE_HTTP) return run();
+
+  return callML(
+    "/seed-dataset",
+    { storeId, date: date || null, menuJson: inlineJson(menuFile), dryRun },
     TRAIN_TIMEOUT_MS,
     run,
   );
@@ -446,10 +490,11 @@ async function pythonInfo() {
 }
 
 // ---- Per-store ML files --------------------------------------------------
-// These read the local filesystem on purpose: the API and the ML layer share
-// ML/salesHistory/<storeId>/, so an existence check or a header read needs no
-// network hop. (The FastAPI service exposes /has-store-history,
-// /dataset-path and /store-history-path as debug equivalents.)
+// The path builders are local by design: in subprocess mode the API and the
+// ML layer share ML/salesHistory/<storeId>/. The readers (datasetSpan,
+// storeHistoryDays, hasStoreHistory) answer from the local filesystem when
+// files are shared, and ask the FastAPI service instead when it is remote —
+// on Modal the history lives in a volume this host cannot see.
 
 const SALES_HISTORY_ROOT = path.join(ML_DIR, "salesHistory");
 const UNSAFE_ID = /[^A-Za-z0-9_-]/g;
@@ -462,7 +507,17 @@ function storeHistoryPath(storeId) {
 
 function hasStoreHistory(storeId) {
   const file = storeHistoryPath(storeId);
-  return Boolean(file) && fs.existsSync(file);
+  const local = Boolean(file) && fs.existsSync(file);
+  if (!USE_HTTP) return local;
+
+  // In HTTP mode the ML files live with the service (Modal volume), not on
+  // this host, so the local check would always say "no history".
+  const readLocal = () => ({ has_history: local });
+  return callMLGet(
+    `/has-store-history/${encodeURIComponent(storeId)}`,
+    DEFAULT_TIMEOUT_MS,
+    readLocal,
+  ).then((data) => Boolean(data.has_history));
 }
 
 const DATASET_DIR = path.join(SALES_HISTORY_ROOT);
@@ -562,6 +617,7 @@ module.exports = {
   pythonInfo,
   rebuildStoreHistory,
   runScript,
+  seedDataset,
   storeHistoryDays,
   storeHistoryPath,
   trainIncremental,
